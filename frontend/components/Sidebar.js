@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useApp, SCREEN_ORDER, SCREEN_PATH, canSee } from '@/lib/store';
 import { avatar } from '@/lib/ui';
@@ -24,16 +25,45 @@ const ICONS = {
 export default function Sidebar() {
   const { user, L, signOut, settings, go, pendingPath } = useApp();
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  // The drawer stays open while the next page loads so its spinner is visible,
+  // then closes once the route has actually changed.
+  useEffect(() => { setOpen(false); }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [open]);
+
   if (!user) return null;
 
   return (
-    <aside className="sidebar">
+    <>
+      <header className="topbar">
+        <button className="hamburger" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open} aria-controls="app-sidebar">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+        </button>
+        <div className="topbar-title">{settings.pharmacyName}</div>
+        <div className="avatar" style={avatar(30)}>{user.initials}</div>
+      </header>
+
+      <div className={`sidebar-scrim${open ? ' open' : ''}`} onClick={() => setOpen(false)} aria-hidden="true"></div>
+
+      <aside id="app-sidebar" className={`sidebar${open ? ' open' : ''}`}>
       <div className="sidebar-brand">
         <div style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--primary)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, flexShrink: 0 }}>H</div>
         <div className="brand-text">
           <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{settings.pharmacyName}</div>
           <div style={{ fontSize: 11, color: 'var(--muted)' }}>Management System</div>
         </div>
+        <button className="sidebar-close" onClick={() => setOpen(false)} aria-label="Close menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+        </button>
       </div>
 
       <nav className="sidebar-nav">
@@ -62,6 +92,7 @@ export default function Sidebar() {
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
         </button>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
