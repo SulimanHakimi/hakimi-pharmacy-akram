@@ -26,7 +26,9 @@ export function totals(invoices, returns = []) {
 
   for (const r of returns) {
     t.rev -= r.amount;
-    t.profit -= r.items.reduce((s, it) => s + (it.price - it.buy) * it.qty, 0);
+    // Mirrors the invoice line above: gross margin on the goods, less the slice of
+    // the original discount that came back with them.
+    t.profit -= r.items.reduce((s, it) => s + (it.price - it.buy) * it.qty, 0) - (r.discShare || 0);
     t.returned = (t.returned || 0) + r.amount;
   }
   t.returned = t.returned || 0;

@@ -58,7 +58,13 @@ export const POST = route(async (request, { user }) => {
   }
   if (!lines.length) return fail('Enter a quantity to take back');
 
-  const amount = lines.reduce((t, l) => t + l.price * l.qty, 0);
+  // Item prices on the invoice are what they were before any discount and before
+  // VAT, while the customer paid the total. Scaling by total/subtotal gives back
+  // exactly what these particular goods cost them.
+  const lineValue = lines.reduce((t, l) => t + l.price * l.qty, 0);
+  const share = inv.sub > 0 ? lineValue / inv.sub : 1;
+  const amount = inv.sub > 0 ? lineValue * (inv.total / inv.sub) : lineValue;
+  const discShare = (inv.disc || 0) * share;
 
   // Clear what this customer still owes before paying any cash out.
   const match = inv.phone ? [{ phone: inv.phone }, { name: inv.customer }] : [{ name: inv.customer }];
@@ -74,7 +80,7 @@ export const POST = route(async (request, { user }) => {
   const ret = await Return.create({
     rn: `RN-${seq}`, invoiceNo: inv.no, invoice: inv._id, date: new Date(),
     customer: inv.customer, phone: inv.phone, items: lines,
-    amount, creditCleared, refunded, restocked: putBack,
+    amount, discShare, creditCleared, refunded, restocked: putBack,
     reason: (reason || '').trim(), servedBy: user.name
   });
 

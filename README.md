@@ -83,6 +83,13 @@ ways — all cash, all on قرض, or a part payment where the customer pays some
 rest is added to their balance. Only the money actually taken reaches the cash book; the
 balance is booked as income when it is collected under **Loan Sales**.
 
+A return reverses a sale instead of writing it off. `POST /api/returns` checks the
+quantities against what is still returnable on that invoice, puts sellable stock back on
+the shelf, and pays the customer back off their قرض before any cash leaves the till. The
+money value is netted out of revenue and cost of goods sold, so refunding a sale leaves
+the books where they were before it — a refund is never a loss. Medicine that cannot be
+resold is refunded the same way with the restock step skipped.
+
 Receiving a purchase order adds the quantity to stock and updates the drug's buy price,
 so margins reflect the latest cost. Paying on the spot books an expense; otherwise the
 amount is added to what you owe that supplier and shows up under accounts payable.

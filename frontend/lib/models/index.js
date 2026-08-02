@@ -97,7 +97,10 @@ const returnSchema = new mongoose.Schema({
     price: Number,                                   // sell price on the original invoice
     buy: Number                                      // buy price on the original invoice
   }],
-  amount: { type: Number, required: true },          // value of the goods coming back
+  // What the customer actually paid for these goods: the line value scaled by the
+  // invoice's discount and VAT, so a return never hands back more than came in.
+  amount: { type: Number, required: true },
+  discShare: { type: Number, default: 0 },           // slice of the invoice discount undone
   creditCleared: { type: Number, default: 0 },       // taken off the customer's قرض
   refunded: { type: Number, default: 0 },            // cash handed back over the counter
   // Expired, damaged or opened medicine cannot go back on the shelf. The money is
