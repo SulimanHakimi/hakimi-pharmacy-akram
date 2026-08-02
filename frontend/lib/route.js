@@ -16,8 +16,19 @@ export function signToken(user) {
   return jwt.sign({ sub: user._id.toString() }, secret(), { expiresIn: '12h' });
 }
 
+/**
+ * The owner's account. Pharmacies set up before the role existed have no flag on
+ * the record, so the original `admin` account is treated as the super admin —
+ * otherwise an upgrade would lock the owner out of the screen that hands the role
+ * to anyone else.
+ */
+export const isSuperAdmin = (u) => !!u && (u.superAdmin === true || u.key === 'admin');
+
 export function publicUser(u) {
-  return { id: u._id, key: u.key, name: u.name, role: u.role, initials: u.initials, email: u.email, perms: u.perms };
+  return {
+    id: u._id, key: u.key, name: u.name, role: u.role, initials: u.initials,
+    email: u.email, perms: u.perms, superAdmin: isSuperAdmin(u)
+  };
 }
 
 async function authenticate(request) {
@@ -35,9 +46,13 @@ async function authenticate(request) {
  * Wraps a route handler with the database connection, authentication and the
  * permission check. `perms` grants access when the account holds ANY of them;
  * omit it for a route every signed-in account may reach. Pass `public: true`
- * for the sign-in route.
+ * for the sign-in route, or `superAdmin: true` for the things only the owner may
+ * do — handing out access, and deleting records.
+ *
+ * The super admin passes every check, so a permission list never has to spell
+ * the owner's account out.
  */
-export function route(handler, { perms, public: isPublic } = {}) {
+export function route(handler, { perms, public: isPublic, superAdmin } = {}) {
   return async (request, ctx = {}) => {
     try {
       await connectDB();
@@ -46,7 +61,11 @@ export function route(handler, { perms, public: isPublic } = {}) {
 
       const user = await authenticate(request);
       if (!user) return fail('Authentication required', 401);
-      if (perms && !perms.some((p) => user.perms?.[p])) {
+      const owner = isSuperAdmin(user);
+      if (superAdmin && !owner) {
+        return fail('Only the super admin can do this', 403);
+      }
+      if (!owner && perms && !perms.some((p) => user.perms?.[p])) {
         return fail('Your account role does not allow this action', 403);
       }
 

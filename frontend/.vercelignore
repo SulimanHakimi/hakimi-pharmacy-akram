@@ -1,0 +1,10 @@
+# Nothing here needs to travel to Vercel — it installs dependencies and runs the
+# build itself. Keeping the upload small matters on a slow connection, where a
+# large one surfaces as "Error: fetch failed" partway through.
+node_modules
+.next
+.git
+*.log
+.env
+.env.local
+backups

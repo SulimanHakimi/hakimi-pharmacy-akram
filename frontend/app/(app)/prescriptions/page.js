@@ -1,15 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { dateStr } from '@/lib/format';
 import { warningsFor } from '@/lib/interactions';
+import Loader from '@/components/Loader';
 
 export default function PrescriptionsPage() {
-  const { L, user } = useApp();
-  const router = useRouter();
+  const { L, user, go } = useApp();
   const [rows, setRows] = useState([]);
   const [drugs, setDrugs] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -55,7 +54,7 @@ export default function PrescriptionsPage() {
       const { pos } = await api(`/prescriptions/${id}/dispense`, { method: 'POST' });
       if (user?.perms?.pos) {
         sessionStorage.setItem('hp_pos_prefill', JSON.stringify(pos));
-        router.push('/pos');
+        go('/pos');
       } else {
         load();
       }
@@ -78,7 +77,9 @@ export default function PrescriptionsPage() {
       )}
 
       <div className="table-wrap">
-        {loaded && rows.length === 0 ? (
+        {!loaded ? (
+          <Loader label="Loading prescriptions…" />
+        ) : rows.length === 0 ? (
           <div className="empty">No prescriptions recorded yet.</div>
         ) : (
           <table className="data">

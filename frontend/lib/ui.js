@@ -24,6 +24,19 @@ export function invoiceSplit(inv) {
   return { paid: inv.paid || 0, due: inv.due || 0 };
 }
 
+/**
+ * What is still owed on one particular loan sale — what went on قرض, less what
+ * has since been collected against it. `paid` and `due` are never rewritten, so
+ * a reprinted invoice still shows the sale as it happened on the day.
+ *
+ * Under one unit of currency is rounding left over from a percentage discount or
+ * VAT, not a real debt, so the loan reads as cleared.
+ */
+export function invoiceOwed(inv) {
+  const owed = invoiceSplit(inv).due - (inv?.settled || 0);
+  return owed < 1 ? 0 : owed;
+}
+
 // Stock status drives both the inventory pill and the POS colour cue.
 export function stockStatus(drug, lowThreshold, monthsToExpiry) {
   if (drug.stock <= 0) return { label: 'Out of stock', cls: 'pill-red', color: C.red };

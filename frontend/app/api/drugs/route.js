@@ -26,9 +26,11 @@ export const POST = route(async (request, { user }) => {
   const drug = await Drug.create({
     name: b.name.trim(), category: b.category || 'Other', supplier: b.supplier || '',
     buy: +b.buy, sell: +b.sell, stock: Math.max(0, Math.floor(+b.stock) || 0),
-    expiry: b.expiry || '2099-12',
+    expiry: b.expiry?.trim() || '',
     batch: b.batch?.trim() || '', barcode: b.barcode?.trim() || ''
   });
   await logAct(user.name, `Added drug ${drug.name}`);
   return ok(drug, 201);
-}, { perms: ['inv'] });
+  // Seeing the inventory ('inv') is not enough to change it — the super admin hands
+  // 'invEdit' to whoever keeps the stock, and passes every check themselves.
+}, { perms: ['invEdit'] });

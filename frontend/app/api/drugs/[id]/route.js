@@ -29,8 +29,10 @@ export const PUT = route(async (request, { params, user }) => {
   await drug.save();
   await logAct(user.name, `Updated drug ${drug.name}`);
   return ok(drug);
-}, { perms: ['inv'] });
+}, { perms: ['invEdit'] });
 
+// Deleting is the super admin's alone — a drug taken out of the catalogue can no
+// longer be matched by a return or a stock movement that refers to it by name.
 export const DELETE = route(async (request, { params, user }) => {
   const drug = await Drug.findById(params.id);
   if (!drug) return fail('Drug not found', 404);
@@ -38,4 +40,4 @@ export const DELETE = route(async (request, { params, user }) => {
   await drug.deleteOne();
   await logAct(user.name, `Removed drug ${drug.name}`);
   return ok({ ok: true });
-}, { perms: ['inv'] });
+}, { superAdmin: true });

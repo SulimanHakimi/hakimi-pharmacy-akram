@@ -6,7 +6,9 @@ const dmy = (t) => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', mon
 
 export const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
+// Drugs without an expiry never surface in the expiring-soon counts.
 export function monthsTo(exp) {
+  if (!exp) return Infinity;
   const [y, m] = String(exp).split('-').map(Number), n = new Date();
   return (y - n.getFullYear()) * 12 + (m - 1 - n.getMonth());
 }

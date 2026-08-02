@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { makeFmt } from '@/lib/format';
+import Loader from '@/components/Loader';
 
 /**
  * Take drugs back off a sale. Quantities are capped at what is still returnable,
@@ -64,11 +65,11 @@ export default function RefundModal({ invoice, onClose, onDone }) {
       <div className="modal modal-md">
         <h2>Return against {invoice.no}</h2>
         <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: -10, marginBottom: 14 }}>
-          {invoice.customer}{invoice.phone ? ` · ${invoice.phone}` : ''}
+          {invoice.customer}
         </div>
 
         {already === null ? (
-          <div className="empty" style={{ padding: '24px 0' }}>Loading…</div>
+          <Loader label="Checking what is still returnable…" pad={24} />
         ) : nothingLeft ? (
           <div className="banner banner-error">Everything on this invoice has already been returned.</div>
         ) : (

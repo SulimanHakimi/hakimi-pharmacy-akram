@@ -171,6 +171,49 @@ table.data th:last-child, table.data td:last-child { padding-right: 16px; }
 
 .empty { padding: 40px 16px; text-align: center; color: var(--faint); font-size: 13px; }
 
+/* ---------- loading ---------- */
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.spinner {
+  display: inline-block; width: 18px; height: 18px; flex-shrink: 0;
+  border: 2px solid var(--border); border-top-color: var(--primary);
+  border-radius: 999px; animation: spin 0.7s linear infinite;
+}
+.spinner-sm { width: 13px; height: 13px; border-width: 2px; }
+.nav-btn.active .spinner { border-color: rgba(255, 255, 255, 0.35); border-top-color: #FFFFFF; }
+
+.loading-block {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  color: var(--muted); font-size: 13px;
+}
+
+.app-boot { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+
+/* Indeterminate — the shell has no idea how long fetching the next screen takes,
+   so the bar sweeps rather than pretending to measure progress. */
+@keyframes route-sweep {
+  0%   { transform: translateX(-100%) scaleX(0.3); }
+  50%  { transform: translateX(0) scaleX(0.6); }
+  100% { transform: translateX(100%) scaleX(0.3); }
+}
+
+.route-progress {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--blue-soft); z-index: 60; overflow: hidden;
+}
+.route-progress > span {
+  display: block; height: 100%; width: 100%;
+  background: linear-gradient(90deg, var(--primary), #4FA3CE);
+  transform-origin: left center;
+  animation: route-sweep 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 1.6s; }
+  .route-progress > span { animation: none; opacity: 0.7; }
+}
+
 /* ---------- controls ---------- */
 
 .btn {
@@ -199,6 +242,20 @@ table.data th:last-child, table.data td:last-child { padding-right: 16px; }
 .form-row { display: flex; gap: 10px; }
 .form-row > * { flex: 1; min-width: 0; }
 @media (max-width: 480px) { .form-row { flex-direction: column; } }
+
+/* Permission tick boxes on the Users screen. */
+.tick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 620px) { .tick-grid { grid-template-columns: 1fr; } }
+
+.tick {
+  display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: #FFFFFF;
+}
+.tick:hover { border-color: var(--primary); }
+.tick input { margin: 2px 0 0; width: 16px; height: 16px; accent-color: var(--primary); flex-shrink: 0; }
+/* An action inside a page rather than a page of its own — indented to read that way. */
+.tick-sub { margin-left: 18px; background: var(--bg); }
+@media (max-width: 620px) { .tick-sub { margin-left: 14px; } }
 
 .pill { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; display: inline-block; }
 .pill-green { background: var(--green-soft); color: var(--green); }
@@ -322,6 +379,12 @@ table.data th:last-child, table.data td:last-child { padding-right: 16px; }
 .doc-actions .btn { height: 44px; }
 .doc-shell { width: 100%; max-width: 420px; }
 .doc-shell.report { max-width: 480px; }
+
+/* The invoice is the one thing a customer takes home, so it prints in Dari. Every
+   other screen and report stays in English for the staff. */
+.doc-rtl { direction: rtl; text-align: right; }
+.doc-rtl .tnum { direction: ltr; unicode-bidi: embed; display: inline-block; }
+.doc-rtl .doc-name { font-size: 19px; }
 
 .doc-line { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; gap: 12px; }
 .doc-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; margin-top: 8px; }

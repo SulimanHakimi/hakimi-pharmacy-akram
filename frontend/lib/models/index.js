@@ -4,17 +4,28 @@ import mongoose from 'mongoose';
 // registered through mongoose.models first to avoid OverwriteModelError.
 const model = (name, schema) => mongoose.models[name] || mongoose.model(name, schema);
 
+// Stands in for the name on a sale where the counter did not ask for one.
+export const WALK_IN = 'Walk-in customer';
+
 const userSchema = new mongoose.Schema({
-  key: { type: String, unique: true },               // 'admin' | 'seller'
+  // Only the two bootstrap accounts carry a key ('admin' | 'seller'); accounts added
+  // from the Users screen have none, so the unique index has to be sparse.
+  key: { type: String, unique: true, sparse: true },
   name: { type: String, required: true },
-  role: { type: String, required: true },            // Administrator | Salesperson
+  role: { type: String, required: true },            // Administrator | Salesperson | …
   initials: String,
   email: { type: String, required: true, unique: true, lowercase: true },
   passwordHash: { type: String, required: true },
+  // Full access, regardless of the tick boxes below: every screen, and the only
+  // account that may add users, hand out permissions, or delete anything.
+  superAdmin: { type: Boolean, default: false },
   perms: {
     dash: { type: Boolean, default: false },
     pos: { type: Boolean, default: false },
     inv: { type: Boolean, default: false },
+    // Seeing the inventory and changing it are separate, so a stock keeper can be
+    // given the drug form without the whole account becoming an administrator.
+    invEdit: { type: Boolean, default: false },
     sup: { type: Boolean, default: false },
     pur: { type: Boolean, default: false },
     sales: { type: Boolean, default: false },
@@ -33,7 +44,7 @@ const drugSchema = new mongoose.Schema({
   buy: { type: Number, required: true },
   sell: { type: Number, required: true },
   stock: { type: Number, default: 0 },
-  expiry: { type: String, required: true },          // 'YYYY-MM'
+  expiry: { type: String, default: '' },             // 'YYYY-MM', blank when the drug has no expiry
   batch: String,
   barcode: String
 }, { timestamps: true });
@@ -49,7 +60,6 @@ const supplierSchema = new mongoose.Schema({
 
 const customerSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  phone: String,
   since: String,
   credit: { type: Number, default: 0 }               // outstanding قرض balance
 }, { timestamps: true });
@@ -57,8 +67,9 @@ const customerSchema = new mongoose.Schema({
 const invoiceSchema = new mongoose.Schema({
   no: { type: String, required: true, unique: true },
   date: { type: Date, default: Date.now },
-  customer: { type: String, required: true },
-  phone: String,
+  // Optional at the counter — a cash walk-in does not have to give a name. A sale
+  // that puts money on قرض does, because there is a balance to collect later.
+  customer: { type: String, default: WALK_IN },
   doctor: String,
   items: [{
     name: String,
@@ -75,6 +86,10 @@ const invoiceSchema = new mongoose.Schema({
   payment: { type: String, enum: ['Cash', 'Credit', 'Partial'], default: 'Cash' },
   paid: { type: Number, default: 0 },                // taken at the counter
   due: { type: Number, default: 0 },                 // added to the customer's قرض
+  // How much of `due` has since been collected against this particular sale.
+  // `paid` and `due` are left at what they were on the day, so the invoice still
+  // prints the truth; a loan is cleared when settled reaches due.
+  settled: { type: Number, default: 0 },
   servedBy: String
 }, { timestamps: true });
 
@@ -90,7 +105,6 @@ const returnSchema = new mongoose.Schema({
   invoice: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice', required: true },
   date: { type: Date, default: Date.now },
   customer: String,
-  phone: String,
   items: [{
     name: String,
     qty: Number,

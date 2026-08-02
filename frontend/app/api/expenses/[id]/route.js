@@ -3,8 +3,11 @@ import { Transaction, logAct } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 
-// Only hand-typed costs can be removed. A purchase or supplier payment moved a
-// stock or supplier balance when it was written, so deleting the cash-book half
+// Removing a cost entry rewrites the cash book, so it is the super admin's alone —
+// anyone with 'fin' can record costs, but not make one disappear.
+//
+// Only hand-typed costs can be removed at all. A purchase or supplier payment moved
+// a stock or supplier balance when it was written, so deleting the cash-book half
 // on its own would leave the books disagreeing.
 // Entries written before `auto` existed carry no flag, so their description is
 // the only thing that identifies them. Covers a database that has not been
@@ -21,4 +24,4 @@ export const DELETE = route(async (request, { params, user }) => {
   await tx.deleteOne();
   await logAct(user.name, `Deleted cost entry: ${tx.desc}`);
   return ok({ id: params.id });
-}, { perms: ['fin'] });
+}, { superAdmin: true });

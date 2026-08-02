@@ -1,5 +1,5 @@
 import { route, ok, fail, body } from '@/lib/route';
-import { Drug, Invoice, Customer, Transaction, nextSeq, getSettings, logAct } from '@/lib/models';
+import { Drug, Invoice, Customer, Transaction, nextSeq, getSettings, logAct, WALK_IN } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,9 +10,14 @@ export const GET = route(async (request) => {
 
 // Complete a sale from the POS cart.
 export const POST = route(async (request, { user }) => {
-  const { items, customer, phone, doctor, discount, discMode, payMode, paidNow } = await body(request);
+  const { items, customer, doctor, discount, discMode, payMode, paidNow } = await body(request);
   if (!Array.isArray(items) || !items.length) return fail('The cart is empty');
-  if (!customer?.trim()) return fail('Customer name is required');
+
+  // A cash sale does not need a name — most walk-ins do not give one. A sale that
+  // puts money on قرض does, because there has to be somebody to collect it from.
+  const named = (customer || '').trim();
+  const onCredit = payMode === 'credit' || payMode === 'partial';
+  if (onCredit && !named) return fail('A قرض sale needs the customer’s name so the balance can be collected');
 
   const settings = await getSettings();
 
@@ -52,27 +57,27 @@ export const POST = route(async (request, { user }) => {
   const seq = await nextSeq('invoice');
   const inv = await Invoice.create({
     no: `INV-${seq}`, date: new Date(),
-    customer: customer.trim(), phone: (phone || '').trim(), doctor: (doctor || '').trim(),
-    items: invItems, sub, disc, vat, total, payment, paid, due, servedBy: user.name
+    customer: named || WALK_IN, doctor: (doctor || '').trim(),
+    items: invItems, sub, disc, vat, total, payment, paid, due, settled: 0, servedBy: user.name
   });
 
   for (const { drug, qty } of lines) {
     await Drug.updateOne({ _id: drug._id }, { $inc: { stock: -qty } });
   }
 
-  // Customers are created on their first purchase.
-  // Match on phone only when one was given — otherwise every walk-in without a
-  // phone would resolve to the same blank-phone customer record.
-  const match = inv.phone ? [{ phone: inv.phone }, { name: inv.customer }] : [{ name: inv.customer }];
-  const existing = await Customer.findOne({ $or: match });
-  if (existing) {
-    if (due > 0) { existing.credit += due; await existing.save(); }
-  } else {
-    await Customer.create({
-      name: inv.customer, phone: inv.phone,
-      since: new Date().toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
-      credit: due
-    });
+  // Customers are created on their first purchase, matched on the name they gave.
+  // An unnamed cash sale is nobody in particular, so it does not open an account.
+  if (named) {
+    const existing = await Customer.findOne({ name: named });
+    if (existing) {
+      if (due > 0) { existing.credit += due; await existing.save(); }
+    } else {
+      await Customer.create({
+        name: named,
+        since: new Date().toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
+        credit: due
+      });
+    }
   }
 
   // Only the money actually taken reaches the cash book; the rest is a receivable

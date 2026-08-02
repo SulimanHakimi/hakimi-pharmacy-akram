@@ -7,6 +7,7 @@ import { makeFmt, todayStr, monthsTo } from '@/lib/format';
 import { warningsFor } from '@/lib/interactions';
 import { C } from '@/lib/ui';
 import InvoiceModal from '@/components/InvoiceModal';
+import Loader from '@/components/Loader';
 
 export default function PosPage() {
   const { settings, L } = useApp();
@@ -17,7 +18,6 @@ export default function PosPage() {
   const [bcode, setBcode] = useState('');
   const [cart, setCart] = useState([]);
   const [customer, setCustomer] = useState('');
-  const [phone, setPhone] = useState('');
   const [doctor, setDoctor] = useState('');
   const [discount, setDiscount] = useState('');
   const [discMode, setDiscMode] = useState('pct');
@@ -39,7 +39,6 @@ export default function PosPage() {
     try {
       const p = JSON.parse(raw);
       setCustomer(p.customer || '');
-      setPhone(p.phone || '');
       setDoctor(p.doctor || '');
       setCart((p.items || []).map((i) => ({ id: i.drugId, qty: i.qty })));
     } catch {}
@@ -87,11 +86,16 @@ export default function PosPage() {
   const part = +paidNow || 0;
   const validPart = payMode !== 'partial' || (part > 0 && part < total);
 
+  // A name is optional on a cash sale and required on a قرض one — there has to be
+  // somebody to collect the balance from later.
+  const onCredit = payMode === 'credit' || payMode === 'partial';
+  const needsName = onCredit && !customer.trim();
+
   async function checkout() {
     if (!cart.length || busy) return;
     setTouched(true);
-    if (!customer.trim()) {
-      setError('Customer name is required to complete the sale.');
+    if (needsName) {
+      setError('Enter the customer’s name — a قرض balance has to belong to somebody.');
       return;
     }
     if (!validPart) {
@@ -107,12 +111,12 @@ export default function PosPage() {
         method: 'POST',
         body: {
           items: cart.map((c) => ({ drugId: c.id, qty: c.qty })),
-          customer, phone, doctor, discount: dv, discMode, payMode,
+          customer, doctor, discount: dv, discMode, payMode,
           paidNow: payMode === 'partial' ? part : undefined
         }
       });
       setInvoice(inv);
-      setCart([]); setCustomer(''); setPhone(''); setDoctor('');
+      setCart([]); setCustomer(''); setDoctor('');
       setDiscount(''); setPayMode('cash'); setPaidNow(''); setTouched(false);
       loadDrugs();
     } catch (e) {
@@ -152,6 +156,7 @@ export default function PosPage() {
             </div>
           </div>
 
+          {!loaded && <div className="card"><Loader label="Loading drugs…" /></div>}
           {loaded && drugs.length === 0 && (
             <div className="card empty">
               No drugs in inventory yet. Add them from the Inventory page before selling.
@@ -189,10 +194,9 @@ export default function PosPage() {
           <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Current sale</div>
 
           <div className="form-grid" style={{ marginBottom: 12 }}>
-            <input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Customer name (required)"
-              className={`field${touched && !customer.trim() ? ' invalid' : ''}`} />
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number (optional)"
-              className="field" />
+            <input value={customer} onChange={(e) => setCustomer(e.target.value)}
+              placeholder={onCredit ? 'Customer name (required for قرض)' : 'Customer name (optional)'}
+              className={`field${touched && needsName ? ' invalid' : ''}`} />
             <input value={doctor} onChange={(e) => setDoctor(e.target.value)} placeholder="Prescribing doctor (optional)" className="field" />
             {error && <div className="banner banner-error">{error}</div>}
           </div>

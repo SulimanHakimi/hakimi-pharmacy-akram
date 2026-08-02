@@ -22,7 +22,7 @@ export const GET = route(async () => {
   return ok({
     transactions: all.slice(0, 200),
     cash, inc30, exp30,
-    receivables: customers.map((c) => ({ id: c._id, name: c.name, sub: c.phone, amount: c.credit })),
+    receivables: customers.map((c) => ({ id: c._id, name: c.name, sub: `Customer since ${c.since || '—'}`, amount: c.credit })),
     payables: suppliers.map((s) => ({ id: s._id, name: s.name, sub: `Last order ${s.lastOrder}`, amount: s.balance }))
   });
 }, { perms: ['fin'] });

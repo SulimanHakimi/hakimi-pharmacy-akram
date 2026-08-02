@@ -67,8 +67,7 @@ export const POST = route(async (request, { user }) => {
   const discShare = (inv.disc || 0) * share;
 
   // Clear what this customer still owes before paying any cash out.
-  const match = inv.phone ? [{ phone: inv.phone }, { name: inv.customer }] : [{ name: inv.customer }];
-  const customer = await Customer.findOne({ $or: match });
+  const customer = await Customer.findOne({ name: inv.customer });
   const creditCleared = customer ? Math.min(amount, customer.credit || 0) : 0;
   const refunded = amount - creditCleared;
 
@@ -79,7 +78,7 @@ export const POST = route(async (request, { user }) => {
 
   const ret = await Return.create({
     rn: `RN-${seq}`, invoiceNo: inv.no, invoice: inv._id, date: new Date(),
-    customer: inv.customer, phone: inv.phone, items: lines,
+    customer: inv.customer, items: lines,
     amount, discShare, creditCleared, refunded, restocked: putBack,
     reason: (reason || '').trim(), servedBy: user.name
   });

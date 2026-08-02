@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import { useApp } from '@/lib/store';
+import { useApp, canDelete } from '@/lib/store';
 import { makeFmt, fmtK, dateStr } from '@/lib/format';
 import { EXPENSE_CATEGORIES, STOCK_CATEGORY, REFUND_CATEGORY } from '@/lib/labels';
+import Loader from '@/components/Loader';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const blank = () => ({ category: 'Rent', desc: '', amount: '', t: today() });
@@ -24,8 +25,9 @@ const bucket = (r) => r.category === STOCK_CATEGORY ? 'stock'
   : r.category === REFUND_CATEGORY ? 'refund' : 'running';
 
 export default function ExpensesPage() {
-  const { settings, L } = useApp();
+  const { settings, L, user } = useApp();
   const fmt = makeFmt(settings.currency);
+  const mayDelete = canDelete(user);
   const [data, setData] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [filter, setFilter] = useState('all');
@@ -162,7 +164,9 @@ export default function ExpensesPage() {
       </div>
 
       <div className="table-wrap">
-        {loaded && !(data?.rows || []).length ? (
+        {!loaded ? (
+          <Loader label="Loading costs…" />
+        ) : !(data?.rows || []).length ? (
           <div className="empty">No costs recorded yet. Add the rent, salaries and bills the pharmacy pays.</div>
         ) : rows.length === 0 ? (
           <div className="empty">No cost matches this filter.</div>
@@ -186,9 +190,11 @@ export default function ExpensesPage() {
                   <td style={{ textAlign: 'right' }}>
                     {isAuto(r) ? (
                       <span style={{ fontSize: 11, color: 'var(--faint)' }}>Automatic</span>
-                    ) : (
-                      <button onClick={() => remove(r)} className="btn btn-ghost btn-sm">Delete</button>
-                    )}
+                    ) : mayDelete ? (
+                      <button onClick={() => remove(r)} className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }}>
+                        Delete
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -200,6 +206,7 @@ export default function ExpensesPage() {
       <div style={{ fontSize: 12, color: 'var(--faint)', marginTop: 12, maxWidth: 640 }}>
         Every cost here is the same entry the Finance cash book shows. Purchases and supplier
         payments book themselves as stock and can only be reversed on those screens.
+        {!mayDelete && ' Removing a cost entry is the super admin’s to do.'}
       </div>
 
       {show && (

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { makeFmt, dateStr } from '@/lib/format';
+import Loader from '@/components/Loader';
 
 export default function CustomersPage() {
   const { settings, L } = useApp();
@@ -21,8 +22,9 @@ export default function CustomersPage() {
   };
   useEffect(() => { load(); }, []);
 
-  const invoicesFor = useMemo(() => (c) =>
-    invoices.filter((i) => i.customer === c.name || (c.phone && i.phone === c.phone)), [invoices]);
+  // Sales are tied to a customer by the name on the invoice — that is all the
+  // counter records.
+  const invoicesFor = useMemo(() => (c) => invoices.filter((i) => i.customer === c.name), [invoices]);
 
   async function settle(id) {
     setError('');
@@ -31,7 +33,7 @@ export default function CustomersPage() {
   }
 
   const q = search.trim().toLowerCase();
-  const shown = q ? customers.filter((c) => [c.name, c.phone].some((v) => String(v || '').toLowerCase().includes(q))) : customers;
+  const shown = q ? customers.filter((c) => String(c.name || '').toLowerCase().includes(q)) : customers;
   const histInvoices = hist ? invoicesFor(hist) : [];
 
   return (
@@ -42,19 +44,23 @@ export default function CustomersPage() {
 
       {error && <div className="banner banner-error" style={{ marginBottom: 14 }}>{error}</div>}
 
-      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or phone…"
+      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name…"
         className="field" style={{ maxWidth: 360, marginBottom: 14 }} />
 
       <div className="table-wrap">
-        {loaded && customers.length === 0 ? (
-          <div className="empty">No customers yet. They are created automatically when you complete a sale.</div>
+        {!loaded ? (
+          <Loader label="Loading customers…" />
+        ) : customers.length === 0 ? (
+          <div className="empty">
+            No customers yet. They are created automatically when a sale is rung up under a name.
+          </div>
         ) : shown.length === 0 ? (
           <div className="empty">No customer matches your search.</div>
         ) : (
           <table className="data">
             <thead>
               <tr>
-                <th>Customer</th><th>Phone</th><th>Since</th>
+                <th>Customer</th><th>Since</th>
                 <th className="num">Purchases</th><th className="num">Total spent</th><th className="num">Credit owed</th><th></th>
               </tr>
             </thead>
@@ -64,7 +70,6 @@ export default function CustomersPage() {
                 return (
                   <tr key={c._id}>
                     <td style={{ fontWeight: 600 }}>{c.name}</td>
-                    <td style={{ color: 'var(--muted)' }} className="tnum">{c.phone}</td>
                     <td style={{ color: 'var(--muted)' }}>{c.since}</td>
                     <td className="num">{invs.length}</td>
                     <td className="num" style={{ fontWeight: 600 }}>{fmt(invs.reduce((t, i) => t + i.total, 0))}</td>
@@ -90,7 +95,7 @@ export default function CustomersPage() {
           <div className="modal modal-lg">
             <div className="row-between" style={{ alignItems: 'baseline', marginBottom: 4 }}>
               <div style={{ fontSize: 20, fontWeight: 600 }}>{hist.name}</div>
-              <div style={{ fontSize: 13, color: 'var(--muted)' }} className="tnum">{hist.phone}</div>
+              <div style={{ fontSize: 13, color: 'var(--muted)' }}>Customer since {hist.since || '—'}</div>
             </div>
             <div style={{ fontSize: 13, color: hist.credit ? 'var(--amber)' : 'var(--muted)', fontWeight: 600, marginBottom: 12 }}>
               {hist.credit ? `${fmt(hist.credit)} owed` : 'No credit owed'}

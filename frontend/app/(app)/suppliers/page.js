@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { makeFmt } from '@/lib/format';
 import { avatar } from '@/lib/ui';
+import Loader from '@/components/Loader';
 
 const EMPTY = { name: '', person: '', phone: '', address: '' };
 
@@ -57,7 +58,9 @@ export default function SuppliersPage() {
 
       {error && <div className="banner banner-error" style={{ marginBottom: 14 }}>{error}</div>}
 
-      {loaded && suppliers.length === 0 ? (
+      {!loaded ? (
+        <div className="card"><Loader label="Loading suppliers…" /></div>
+      ) : suppliers.length === 0 ? (
         <div className="card empty">No suppliers yet. Add one to start recording purchases.</div>
       ) : (
         <div className="grid-2">

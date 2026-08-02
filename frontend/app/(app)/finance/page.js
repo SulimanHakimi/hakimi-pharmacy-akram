@@ -6,6 +6,7 @@ import { useApp } from '@/lib/store';
 import { makeFmt, dateStr } from '@/lib/format';
 import { EXPENSE_CATEGORIES } from '@/lib/labels';
 import { C } from '@/lib/ui';
+import Loader from '@/components/Loader';
 
 const INCOME_CATEGORIES = ['Sales', 'Credit repayment', 'Other'];
 const blankEntry = () => ({ type: 'Income', category: 'Other', desc: '', amount: '' });
@@ -60,14 +61,21 @@ export default function FinancePage() {
   const receivables = data?.receivables || [];
   const payables = data?.payables || [];
 
+  const head = (
+    <div className="page-head">
+      <h1>{L.fin}</h1>
+      <button onClick={() => { setForm(blankEntry()); setError(''); setShow(true); }} className="btn btn-primary">
+        + Record entry
+      </button>
+    </div>
+  );
+
+  // An empty cash box and a cash box that has not loaded look identical otherwise.
+  if (!data) return <>{head}<Loader label="Loading the cash book…" pad={80} /></>;
+
   return (
     <>
-      <div className="page-head">
-        <h1>{L.fin}</h1>
-        <button onClick={() => { setForm(blankEntry()); setError(''); setShow(true); }} className="btn btn-primary">
-          + Record entry
-        </button>
-      </div>
+      {head}
 
       {error && <div className="banner banner-error" style={{ marginBottom: 14 }}>{error}</div>}
 

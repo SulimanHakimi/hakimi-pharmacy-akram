@@ -7,6 +7,7 @@ import { makeFmt, dateStr } from '@/lib/format';
 import { invoiceSplit } from '@/lib/ui';
 import InvoiceModal from '@/components/InvoiceModal';
 import RefundModal from '@/components/RefundModal';
+import Loader from '@/components/Loader';
 
 export default function InvoicesPage() {
   const { settings, L, user } = useApp();
@@ -27,8 +28,8 @@ export default function InvoicesPage() {
 
   const q = search.trim().toLowerCase();
   const match = (...vals) => !q || vals.some((v) => String(v || '').toLowerCase().includes(q));
-  const shown = rows.filter((r) => match(r.no, r.customer, r.phone));
-  const shownReturns = returns.filter((r) => match(r.rn, r.invoiceNo, r.customer, r.phone));
+  const shown = rows.filter((r) => match(r.no, r.customer));
+  const shownReturns = returns.filter((r) => match(r.rn, r.invoiceNo, r.customer));
 
   // Margin on a sale is only meaningful to someone who can see cost prices.
   const showProfit = !!user?.perms?.ana || !!user?.perms?.fin || !!user?.perms?.inv;
@@ -51,12 +52,14 @@ export default function InvoicesPage() {
           </button>
         </div>
         <input value={search} onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by number, customer or phone…" className="field" style={{ maxWidth: 340 }} />
+          placeholder="Search by invoice number or customer…" className="field" style={{ maxWidth: 340 }} />
       </div>
 
       {tab === 'sales' && (
         <div className="table-wrap">
-          {loaded && rows.length === 0 ? (
+          {!loaded ? (
+            <Loader label="Loading invoices…" />
+          ) : rows.length === 0 ? (
             <div className="empty">No invoices yet. Completed sales appear here.</div>
           ) : shown.length === 0 ? (
             <div className="empty">No invoice matches your search.</div>
@@ -112,7 +115,9 @@ export default function InvoicesPage() {
 
       {tab === 'returns' && (
         <div className="table-wrap">
-          {loaded && returns.length === 0 ? (
+          {!loaded ? (
+            <Loader label="Loading returns…" />
+          ) : returns.length === 0 ? (
             <div className="empty">
               Nothing has been returned. Use <strong>Return</strong> on a sale to take drugs back.
             </div>

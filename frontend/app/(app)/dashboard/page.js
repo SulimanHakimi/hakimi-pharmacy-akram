@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { makeFmt, dateStr, expStr, todayStr } from '@/lib/format';
 import InvoiceModal from '@/components/InvoiceModal';
+import Loader from '@/components/Loader';
 
 export default function DashboardPage() {
   const { settings, L } = useApp();
@@ -18,12 +19,20 @@ export default function DashboardPage() {
     api('/invoices?limit=5').then(setInvoices).catch(() => {});
   }, []);
 
+  const head = (
+    <div className="page-head">
+      <h1>{L.dash}</h1>
+      <div style={{ fontSize: 13, color: 'var(--muted)' }}>{todayStr()}</div>
+    </div>
+  );
+
+  // Zeroes everywhere read as a day with no sales rather than as a page that has
+  // not finished loading, so nothing is shown until the figures are in.
+  if (!stats) return <>{head}<Loader label="Loading today’s figures…" pad={80} /></>;
+
   return (
     <>
-      <div className="page-head">
-        <h1>{L.dash}</h1>
-        <div style={{ fontSize: 13, color: 'var(--muted)' }}>{todayStr()}</div>
-      </div>
+      {head}
 
       <div className="grid-4" style={{ marginBottom: 20 }}>
         <div className="card">

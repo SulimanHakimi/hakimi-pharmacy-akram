@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { makeFmt, fmtK, dm } from '@/lib/format';
 import ReportModal from '@/components/ReportModal';
+import Loader from '@/components/Loader';
 
 const PERIODS = [['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly'], ['yearly', 'Yearly']];
 const REPORTS = [
@@ -23,9 +24,16 @@ export default function AnalyticsPage() {
   const [data, setData] = useState(null);
   const [report, setReport] = useState(null);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
+  // Every period is a fresh trip to the server, so the figures are held back until
+  // the new window lands rather than leaving the old ones under the new heading.
   useEffect(() => {
-    api(`/analytics/period/${period}`).then(setData).catch((e) => setError(e.message));
+    setLoading(true);
+    api(`/analytics/period/${period}`)
+      .then(setData)
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, [period]);
 
   async function openReport(type, p) {
@@ -45,16 +53,30 @@ export default function AnalyticsPage() {
   const margin = data && data.cur.rev > 0 ? Math.round(data.cur.profit / data.cur.rev * 100) : 0;
   const avg = data && data.cur.invs > 0 ? data.cur.rev / data.cur.invs : 0;
 
+  const head = (
+    <div className="page-head">
+      <h1>{L.ana}</h1>
+      <div className="segment">
+        {PERIODS.map(([k, label]) => (
+          <button key={k} onClick={() => setPeriod(k)} className={period === k ? 'on' : ''}>{label}</button>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (loading || !data) {
+    return (
+      <>
+        {head}
+        {error && <div className="banner banner-error" style={{ marginBottom: 14 }}>{error}</div>}
+        {!error && <Loader label="Working out the figures…" pad={80} />}
+      </>
+    );
+  }
+
   return (
     <>
-      <div className="page-head">
-        <h1>{L.ana}</h1>
-        <div className="segment">
-          {PERIODS.map(([k, label]) => (
-            <button key={k} onClick={() => setPeriod(k)} className={period === k ? 'on' : ''}>{label}</button>
-          ))}
-        </div>
-      </div>
+      {head}
       <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>{data?.range}</div>
 
       {error && <div className="banner banner-error" style={{ marginBottom: 14 }}>{error}</div>}

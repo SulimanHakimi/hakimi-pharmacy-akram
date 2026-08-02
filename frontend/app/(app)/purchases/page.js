@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { makeFmt, dateStr } from '@/lib/format';
+import Loader from '@/components/Loader';
 
 export default function PurchasesPage() {
   const { settings, L } = useApp();
@@ -61,7 +62,9 @@ export default function PurchasesPage() {
       )}
 
       <div className="table-wrap">
-        {loaded && rows.length === 0 ? (
+        {!loaded ? (
+          <Loader label="Loading purchase orders…" />
+        ) : rows.length === 0 ? (
           <div className="empty">No purchase orders recorded yet.</div>
         ) : (
           <table className="data narrow">

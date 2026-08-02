@@ -12,17 +12,28 @@ Bazar Zahid Abad, Mohammad Agha, Logar · License PH-2214
 
 ## Accounts
 
-Two accounts, created by `npm run init` from passwords you choose. Each person changes
-their own password from **Settings** after first sign-in.
+Setup creates two accounts from passwords you choose. Each person changes their own
+password from **Settings** after first sign-in.
 
 | Account | Role | Can reach |
 |---|---|---|
-| Akram Hakimi | Administrator | Everything |
+| Akram Hakimi | Super admin | Everything |
 | Sales counter | Salesperson | Point of Sale and Invoices only |
 
-Permissions are enforced in two places: the sidebar only shows pages the account may
-open, and every API route checks the same permission. A salesperson who types
-`/finance` into the address bar is redirected, and the underlying request returns 403.
+Everyone after that is added by the super admin under **Users & Access**, which is
+where each account's pages are ticked on and off. Permissions are enforced in two
+places: the sidebar only shows pages the account may open, and every API route checks
+the same permission. A salesperson who types `/finance` into the address bar is
+redirected, and the underlying request returns 403.
+
+**The super admin** reaches every screen regardless of the tick boxes, and is the only
+account that can add or remove users, hand out access, or delete anything — a drug from
+the catalogue, or an entry from the cash book. It can pass the role to someone else but
+not give it up, so the pharmacy is never left without one.
+
+Two grants are worth calling out. **Inventory** lets an account read the drug list;
+**Add & edit drugs** is separate, so the person who keeps the stock can be given the drug
+form without the rest of the system coming with it. Deleting is on neither list.
 
 ## First run
 
@@ -67,7 +78,8 @@ data you enter. The natural order on day one:
 
 1. **Suppliers** → add the distributors you buy from.
 2. **Inventory** → add each drug with its category, supplier, buy and sell price,
-   opening stock, expiry month, and optionally batch and barcode.
+   opening stock, and optionally expiry month, batch and barcode. A drug left
+   without an expiry month never shows up in the expiring-soon lists.
 3. **Point of Sale** → start selling. Customers are created automatically from the
    name and phone on the first sale.
 
@@ -140,13 +152,19 @@ machine — a backup on the same disk does not survive that disk failing.
 All routes are under `/api` and need `Authorization: Bearer <token>` except
 `POST /api/auth/login`.
 
+The super admin passes every check below, so nothing has to name that account.
+
 | Method | Path | Permission |
 |---|---|---|
 | POST | `/auth/login` | public |
 | GET | `/auth/me` | any signed-in account |
 | POST | `/auth/change-password` | any signed-in account |
+| GET, POST | `/users`, PUT, DELETE `/users/:id` | super admin |
 | GET | `/drugs` | any signed-in account |
-| POST, PUT, DELETE | `/drugs` | `inv` |
+| POST, PUT | `/drugs` | `invEdit` |
+| DELETE | `/drugs/:id` | super admin |
+| DELETE | `/expenses/:id` | super admin |
+| POST | `/invoices/:id/settle` | `cust` or `fin` |
 | GET | `/suppliers` | any signed-in account |
 | POST, PUT | `/suppliers` | `sup` |
 | POST | `/suppliers/:id/pay` | `sup` or `fin` |

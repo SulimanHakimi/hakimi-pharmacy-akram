@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useApp, SCREEN_ORDER, SCREEN_PATH, canSee } from '@/lib/store';
 import { avatar } from '@/lib/ui';
 
@@ -17,13 +17,13 @@ const ICONS = {
   fin: <><circle cx="12" cy="12" r="9"></circle><path d="M15 9.3c-.6-.8-1.6-1.3-3-1.3-1.9 0-3 .9-3 2s1.1 1.7 3 2c1.9.3 3 1 3 2s-1.1 2-3 2c-1.4 0-2.4-.5-3-1.3"></path><path d="M12 6.5v11"></path></>,
   exp: <><path d="M4 6a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"></path><path d="M15 4v5h5"></path><path d="M8.5 16.5h7"></path><path d="M12 10.5v3"></path></>,
   ana: <><path d="M3 21h18"></path><rect x="5" y="12" width="3.5" height="6" rx="1"></rect><rect x="10.5" y="7" width="3.5" height="11" rx="1"></rect><rect x="16" y="3" width="3.5" height="15" rx="1"></rect></>,
+  users: <><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"></path><path d="M18 7.5v5M15.5 10h5"></path></>,
   set: <><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"></path></>
 };
 
 export default function Sidebar() {
-  const { user, L, signOut, settings } = useApp();
+  const { user, L, signOut, settings, go, pendingPath } = useApp();
   const pathname = usePathname();
-  const router = useRouter();
   if (!user) return null;
 
   return (
@@ -37,13 +37,18 @@ export default function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
-        {SCREEN_ORDER.filter((k) => canSee(user, k)).map((k) => (
-          <button key={k} onClick={() => router.push(SCREEN_PATH[k])}
-            className={`nav-btn${pathname === SCREEN_PATH[k] ? ' active' : ''}`}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" style={{ flexShrink: 0 }}>{ICONS[k]}</svg>
-            {L[k]}
-          </button>
-        ))}
+        {SCREEN_ORDER.filter((k) => canSee(user, k)).map((k) => {
+          const path = SCREEN_PATH[k];
+          const active = pathname === path;
+          return (
+            <button key={k} onClick={() => go(path)} className={`nav-btn${active ? ' active' : ''}`}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" style={{ flexShrink: 0 }}>{ICONS[k]}</svg>
+              <span style={{ flex: 1, minWidth: 0 }}>{L[k]}</span>
+              {/* Which screen is being opened, for when the whole nav is one long list. */}
+              {pendingPath === path && <span className="spinner spinner-sm" aria-label="Opening"></span>}
+            </button>
+          );
+        })}
       </nav>
 
       <div className="sidebar-user">

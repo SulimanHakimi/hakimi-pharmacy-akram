@@ -5,7 +5,7 @@ import { User, Counter, getSettings, logAct } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 
-const ALL = { dash: 1, pos: 1, inv: 1, sup: 1, pur: 1, sales: 1, rx: 1, cust: 1, fin: 1, ana: 1, set: 1 };
+const ALL = { dash: 1, pos: 1, inv: 1, invEdit: 1, sup: 1, pur: 1, sales: 1, rx: 1, cust: 1, fin: 1, ana: 1, set: 1 };
 const SELLING_ONLY = { pos: 1, sales: 1 };
 const COLLECTIONS = ['User', 'Drug', 'Supplier', 'Customer', 'Invoice', 'Return', 'Purchase', 'Prescription', 'Transaction', 'ActivityLog', 'Counter', 'Setting'];
 
@@ -66,12 +66,14 @@ export const POST = route(async (request) => {
 
   const accounts = [
     {
-      key: 'admin', role: 'Administrator', perms: ALL, password: adminPassword,
+      // The owner: full access, and the only account that can add other users or
+      // delete anything until it hands the role on.
+      key: 'admin', role: 'Administrator', perms: ALL, superAdmin: true, password: adminPassword,
       name: b.adminName || process.env.ADMIN_NAME || 'Akram Hakimi',
       email: (b.adminEmail || process.env.ADMIN_EMAIL || 'akram@hakimipharmacy.af').toLowerCase()
     },
     {
-      key: 'seller', role: 'Salesperson', perms: SELLING_ONLY, password: sellerPassword,
+      key: 'seller', role: 'Salesperson', perms: SELLING_ONLY, superAdmin: false, password: sellerPassword,
       name: b.sellerName || process.env.SELLER_NAME || 'Sales Counter',
       email: (b.sellerEmail || process.env.SELLER_EMAIL || 'seller@hakimipharmacy.af').toLowerCase()
     }
@@ -81,7 +83,8 @@ export const POST = route(async (request) => {
   for (const a of accounts) {
     await User.create({
       key: a.key, name: a.name, role: a.role, initials: initials(a.name),
-      email: a.email, passwordHash: await bcrypt.hash(a.password, 10), perms: a.perms
+      email: a.email, passwordHash: await bcrypt.hash(a.password, 10),
+      superAdmin: a.superAdmin, perms: a.perms
     });
     created.push({ name: a.name, role: a.role, email: a.email });
   }
