@@ -10,7 +10,7 @@ export const GET = route(async (request) => {
 
 // Complete a sale from the POS cart.
 export const POST = route(async (request, { user }) => {
-  const { items, customer, phone, doctor, discount, discMode, payMode } = await body(request);
+  const { items, customer, phone, doctor, discount, discMode, payMode, paidNow } = await body(request);
   if (!Array.isArray(items) || !items.length) return fail('The cart is empty');
   if (!customer?.trim()) return fail('Customer name is required');
 
@@ -31,13 +31,29 @@ export const POST = route(async (request, { user }) => {
   const disc = dv <= 0 ? 0 : Math.min(discMode === 'amt' ? dv : sub * Math.min(dv, 100) / 100, sub);
   const vat = (sub - disc) * (settings.vatRate || 0) / 100;
   const total = sub - disc + vat;
-  const payment = payMode === 'credit' ? 'Credit' : 'Cash';
+
+  // Three ways to settle a sale: all cash, all on قرض, or part now and the rest on
+  // قرض. A leftover under one unit of currency is rounding from a percentage
+  // discount or VAT, not a real debt, so it is treated as paid in full.
+  let paid, due;
+  if (payMode === 'credit') {
+    paid = 0; due = total;
+  } else if (payMode === 'partial') {
+    paid = +paidNow;
+    if (!(paid > 0)) return fail('Enter how much the customer is paying now');
+    if (paid >= total) return fail('That covers the whole bill — record it as a cash sale');
+    due = total - paid;
+    if (due < 1) { paid = total; due = 0; }
+  } else {
+    paid = total; due = 0;
+  }
+  const payment = due <= 0 ? 'Cash' : paid > 0 ? 'Partial' : 'Credit';
 
   const seq = await nextSeq('invoice');
   const inv = await Invoice.create({
     no: `INV-${seq}`, date: new Date(),
     customer: customer.trim(), phone: (phone || '').trim(), doctor: (doctor || '').trim(),
-    items: invItems, sub, disc, vat, total, payment, servedBy: user.name
+    items: invItems, sub, disc, vat, total, payment, paid, due, servedBy: user.name
   });
 
   for (const { drug, qty } of lines) {
@@ -50,19 +66,22 @@ export const POST = route(async (request, { user }) => {
   const match = inv.phone ? [{ phone: inv.phone }, { name: inv.customer }] : [{ name: inv.customer }];
   const existing = await Customer.findOne({ $or: match });
   if (existing) {
-    if (payment === 'Credit') { existing.credit += total; await existing.save(); }
+    if (due > 0) { existing.credit += due; await existing.save(); }
   } else {
     await Customer.create({
       name: inv.customer, phone: inv.phone,
       since: new Date().toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
-      credit: payment === 'Credit' ? total : 0
+      credit: due
     });
   }
 
-  if (payment === 'Cash') {
+  // Only the money actually taken reaches the cash book; the rest is a receivable
+  // and is booked as income when the customer settles it.
+  if (paid > 0) {
     await Transaction.create({
-      type: 'Income', category: 'Sales', desc: `Sale ${inv.no} — ${inv.customer}`,
-      amount: total, auto: true, recordedBy: user.name
+      type: 'Income', category: 'Sales',
+      desc: `Sale ${inv.no} — ${inv.customer}${due > 0 ? ' (part payment)' : ''}`,
+      amount: paid, auto: true, recordedBy: user.name
     });
   }
 

@@ -3,7 +3,7 @@ import { Customer, Transaction, logAct } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 
-// Collect a نسیه balance and record the income. Pass an amount to take a part
+// Collect a قرض balance and record the income. Pass an amount to take a part
 // payment; with no amount the whole outstanding balance is cleared.
 export const POST = route(async (request, { params, user }) => {
   const c = await Customer.findById(params.id);

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { makeFmt, dateStr, dm } from '@/lib/format';
+import { invoiceSplit } from '@/lib/ui';
 import InvoiceModal from '@/components/InvoiceModal';
 
 const TABS = [
@@ -66,7 +67,7 @@ export default function LoansPage() {
         <div className="card">
           <div className="label">Outstanding</div>
           <div className="stat-value" style={{ fontSize: 20, color: 'var(--amber)' }}>{fmt(data?.outstanding || 0)}</div>
-          <div className="stat-sub">{(data?.debtors || []).length} customer(s) on نسیه</div>
+          <div className="stat-sub">{(data?.debtors || []).length} customer(s) on قرض</div>
         </div>
         <div className="card">
           <div className="label">Overdue · 30d+</div>
@@ -142,7 +143,7 @@ export default function LoansPage() {
       {tab === 'sales' && (
         <div className="table-wrap">
           {loaded && !(data?.sales || []).length ? (
-            <div className="empty">No loan sales yet. Choose نسیه as the payment method at the counter.</div>
+            <div className="empty">No loan sales yet. Choose <strong>قرض</strong> or <strong>Part</strong> as the payment method at the counter.</div>
           ) : sales.length === 0 ? (
             <div className="empty">No loan sale matches your search.</div>
           ) : (
@@ -150,23 +151,30 @@ export default function LoansPage() {
               <thead>
                 <tr>
                   <th>Invoice</th><th>Date</th><th>Customer</th><th>Phone</th>
-                  <th className="num">Items</th><th className="num">Amount</th><th></th>
+                  <th className="num">Bill total</th><th className="num">Paid then</th>
+                  <th className="num">Put on قرض</th><th></th>
                 </tr>
               </thead>
               <tbody>
-                {sales.map((s) => (
+                {sales.map((s) => {
+                  const { paid, due } = invoiceSplit(s);
+                  return (
                   <tr key={s._id}>
                     <td style={{ fontWeight: 600, color: 'var(--primary)' }}>{s.no}</td>
                     <td style={{ color: 'var(--muted)' }}>{dateStr(s.date)}</td>
                     <td>{s.customer}</td>
                     <td style={{ color: 'var(--muted)' }} className="tnum">{s.phone || '—'}</td>
-                    <td className="num">{s.items.length}</td>
-                    <td className="num" style={{ fontWeight: 600 }}>{fmt(s.total)}</td>
+                    <td className="num">{fmt(s.total)}</td>
+                    <td className="num" style={{ color: paid > 0 ? 'var(--green)' : 'var(--faint)' }}>
+                      {paid > 0 ? fmt(paid) : '—'}
+                    </td>
+                    <td className="num" style={{ fontWeight: 600, color: 'var(--amber)' }}>{fmt(due)}</td>
                     <td style={{ textAlign: 'right' }}>
                       <button onClick={() => setOpen(s)} className="btn btn-ghost btn-sm">View</button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           )}

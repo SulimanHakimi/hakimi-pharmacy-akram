@@ -1,7 +1,7 @@
 # Hakimi Pharmacy — Management System
 
 Pharmacy management system: point of sale with printed invoices, inventory with buy and
-sell prices, suppliers, purchase orders, prescriptions, customer credit (نسیه), finance
+sell prices, suppliers, purchase orders, prescriptions, customer credit (قرض), finance
 and printable reports.
 
 - **Frontend** — Next.js (App Router) + React, plain JavaScript
@@ -77,8 +77,11 @@ Invoice, purchase order and prescription numbers start at 1001.
 
 Completing a sale is the flow that touches most of the system. `POST /api/invoices`
 validates stock, writes the invoice, decrements each drug, creates the customer if the
-customer is new (matched on phone when one was entered, otherwise on name), and either records cash income or adds the total to that customer's credit
-when the sale is on نسیه.
+customer is new (matched on phone when one was entered, otherwise on name), and splits the
+bill into what was paid at the counter and what went on قرض. A sale can be settled three
+ways — all cash, all on قرض, or a part payment where the customer pays some now and the
+rest is added to their balance. Only the money actually taken reaches the cash book; the
+balance is booked as income when it is collected under **Loan Sales**.
 
 Receiving a purchase order adds the quantity to stock and updates the drug's buy price,
 so margins reflect the latest cost. Paying on the spot books an expense; otherwise the

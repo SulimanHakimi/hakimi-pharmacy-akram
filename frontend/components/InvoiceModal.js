@@ -2,6 +2,7 @@
 
 import { useApp } from '@/lib/store';
 import { makeFmt, dateStr } from '@/lib/format';
+import { invoiceSplit } from '@/lib/ui';
 
 const ROW = { display: 'grid', gridTemplateColumns: '2.2fr 0.5fr 0.9fr 1fr', gap: '4px 8px' };
 const META = { color: 'var(--muted)' };
@@ -11,6 +12,7 @@ export default function InvoiceModal({ invoice, onClose }) {
   const { settings, user } = useApp();
   const fmt = makeFmt(settings.currency);
   if (!invoice) return null;
+  const { paid, due } = invoiceSplit(invoice);
 
   return (
     <div className="overlay">
@@ -66,6 +68,15 @@ export default function InvoiceModal({ invoice, onClose }) {
             <div className="doc-total">
               <div>Total</div><div className="tnum">{fmt(invoice.total)}</div>
             </div>
+            {/* Only worth printing when the customer did not settle the bill outright. */}
+            {due > 0 && (
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed #C6D0D8' }}>
+                <div className="doc-line"><div>Paid now</div><div className="tnum">{fmt(paid)}</div></div>
+                <div className="doc-line" style={{ fontWeight: 700 }}>
+                  <div>Remaining on قرض</div><div className="tnum">{fmt(due)}</div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--muted)', marginTop: 16, paddingTop: 12, borderTop: '1px dashed #C6D0D8' }}>

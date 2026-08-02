@@ -51,7 +51,7 @@ const customerSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phone: String,
   since: String,
-  credit: { type: Number, default: 0 }               // outstanding نسیه balance
+  credit: { type: Number, default: 0 }               // outstanding قرض balance
 }, { timestamps: true });
 
 const invoiceSchema = new mongoose.Schema({
@@ -70,7 +70,40 @@ const invoiceSchema = new mongoose.Schema({
   disc: { type: Number, default: 0 },
   vat: { type: Number, default: 0 },
   total: Number,
-  payment: { type: String, enum: ['Cash', 'Credit'], default: 'Cash' },
+  // 'Partial' is the counter taking part of the money now and putting the rest on
+  // قرض — paid + due always add up to total.
+  payment: { type: String, enum: ['Cash', 'Credit', 'Partial'], default: 'Cash' },
+  paid: { type: Number, default: 0 },                // taken at the counter
+  due: { type: Number, default: 0 },                 // added to the customer's قرض
+  servedBy: String
+}, { timestamps: true });
+
+/**
+ * A customer bringing drugs back. This reverses the original sale rather than
+ * booking a loss: sellable stock goes back on the shelf, the money value is
+ * netted out of revenue and cost of goods sold, and whatever the customer is
+ * owed is either taken off their قرض or handed back in cash.
+ */
+const returnSchema = new mongoose.Schema({
+  rn: { type: String, required: true, unique: true },
+  invoiceNo: { type: String, required: true },
+  invoice: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice', required: true },
+  date: { type: Date, default: Date.now },
+  customer: String,
+  phone: String,
+  items: [{
+    name: String,
+    qty: Number,
+    price: Number,                                   // sell price on the original invoice
+    buy: Number                                      // buy price on the original invoice
+  }],
+  amount: { type: Number, required: true },          // value of the goods coming back
+  creditCleared: { type: Number, default: 0 },       // taken off the customer's قرض
+  refunded: { type: Number, default: 0 },            // cash handed back over the counter
+  // Expired, damaged or opened medicine cannot go back on the shelf. The money is
+  // still returned; only the stock movement is skipped.
+  restocked: { type: Boolean, default: true },
+  reason: String,
   servedBy: String
 }, { timestamps: true });
 
@@ -114,7 +147,7 @@ const activityLogSchema = new mongoose.Schema({
 });
 
 const counterSchema = new mongoose.Schema({
-  key: { type: String, unique: true },               // 'invoice' | 'po' | 'rx'
+  key: { type: String, unique: true },               // 'invoice' | 'po' | 'rx' | 'return'
   seq: { type: Number, default: 0 }
 });
 
@@ -136,6 +169,7 @@ export const Drug = model('Drug', drugSchema);
 export const Supplier = model('Supplier', supplierSchema);
 export const Customer = model('Customer', customerSchema);
 export const Invoice = model('Invoice', invoiceSchema);
+export const Return = model('Return', returnSchema);
 export const Purchase = model('Purchase', purchaseSchema);
 export const Prescription = model('Prescription', prescriptionSchema);
 export const Transaction = model('Transaction', transactionSchema);

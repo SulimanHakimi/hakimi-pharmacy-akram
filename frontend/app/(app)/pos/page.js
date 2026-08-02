@@ -22,6 +22,7 @@ export default function PosPage() {
   const [discount, setDiscount] = useState('');
   const [discMode, setDiscMode] = useState('pct');
   const [payMode, setPayMode] = useState('cash');
+  const [paidNow, setPaidNow] = useState('');
   const [error, setError] = useState('');
   const [touched, setTouched] = useState(false);
   const [invoice, setInvoice] = useState(null);
@@ -81,6 +82,11 @@ export default function PosPage() {
   const total = sub - disc + vat;
   const warnings = warningsFor(cart.map((c) => byId[c.id]?.name).filter(Boolean));
 
+  // A part payment has to be a real slice of the bill — nothing, or the whole
+  // amount, means one of the other two payment methods was meant.
+  const part = +paidNow || 0;
+  const validPart = payMode !== 'partial' || (part > 0 && part < total);
+
   async function checkout() {
     if (!cart.length || busy) return;
     setTouched(true);
@@ -88,16 +94,26 @@ export default function PosPage() {
       setError('Customer name is required to complete the sale.');
       return;
     }
+    if (!validPart) {
+      setError(part <= 0
+        ? 'Enter how much the customer is paying now.'
+        : `A part payment must be less than the ${fmt(total)} total — use Cash for the full amount.`);
+      return;
+    }
     setBusy(true);
     setError('');
     try {
       const inv = await api('/invoices', {
         method: 'POST',
-        body: { items: cart.map((c) => ({ drugId: c.id, qty: c.qty })), customer, phone, doctor, discount: dv, discMode, payMode }
+        body: {
+          items: cart.map((c) => ({ drugId: c.id, qty: c.qty })),
+          customer, phone, doctor, discount: dv, discMode, payMode,
+          paidNow: payMode === 'partial' ? part : undefined
+        }
       });
       setInvoice(inv);
       setCart([]); setCustomer(''); setPhone(''); setDoctor('');
-      setDiscount(''); setPayMode('cash'); setTouched(false);
+      setDiscount(''); setPayMode('cash'); setPaidNow(''); setTouched(false);
       loadDrugs();
     } catch (e) {
       setError(e.message);
@@ -246,11 +262,29 @@ export default function PosPage() {
 
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button onClick={() => setPayMode('cash')} style={payBtn(payMode === 'cash')}>Cash</button>
-            <button onClick={() => setPayMode('credit')} style={payBtn(payMode === 'credit')}>Credit (نسیه)</button>
+            <button onClick={() => setPayMode('partial')} style={payBtn(payMode === 'partial')}>Part</button>
+            <button onClick={() => setPayMode('credit')} style={payBtn(payMode === 'credit')}>قرض</button>
           </div>
-          {payMode === 'credit' && (
+
+          {payMode === 'partial' && (
+            <div style={{ marginTop: 10 }}>
+              <div className="row-between">
+                <div style={{ fontSize: 13, color: 'var(--muted)' }}>Paying now</div>
+                <input value={paidNow} onChange={(e) => setPaidNow(e.target.value)} type="number" min="0" placeholder="0"
+                  className={`field${touched && !validPart ? ' invalid' : ''}`}
+                  style={{ width: 110, padding: '6px 10px', borderRadius: 10, textAlign: 'right' }} />
+              </div>
+              <div className="row-between" style={{ fontSize: 13, fontWeight: 600, color: 'var(--amber)', marginTop: 8 }}>
+                <div>Goes on قرض</div><div className="tnum">{fmt(Math.max(0, total - (+paidNow || 0)))}</div>
+              </div>
+            </div>
+          )}
+
+          {(payMode === 'credit' || payMode === 'partial') && (
             <div style={{ fontSize: 11, color: 'var(--amber)', marginTop: 8 }}>
-              The total is added to the customer&apos;s credit account — collect it later from Customers.
+              {payMode === 'credit'
+                ? 'The whole total is added to the customer’s قرض — collect it later from Loan Sales.'
+                : 'Only the amount paid now goes into the cash box; the rest is added to the customer’s قرض.'}
             </div>
           )}
 

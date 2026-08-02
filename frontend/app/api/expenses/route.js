@@ -1,6 +1,6 @@
 import { route, ok, fail, body } from '@/lib/route';
 import { Transaction, logAct } from '@/lib/models';
-import { ALL_EXPENSE_CATEGORIES, STOCK_CATEGORY } from '@/lib/labels';
+import { ALL_EXPENSE_CATEGORIES, STOCK_CATEGORY, REFUND_CATEGORY } from '@/lib/labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +26,9 @@ export const GET = route(async (request) => {
   const yearStart = new Date(new Date().getFullYear(), 0, 1);
   const sum = (list) => list.reduce((total, x) => total + x.amount, 0);
 
-  const running = rows.filter((x) => x.category !== STOCK_CATEGORY);
+  // Money refunded on a return is a reversed sale, not a cost the pharmacy bore,
+  // so it stays out of both totals and only shows in the list itself.
+  const running = rows.filter((x) => x.category !== STOCK_CATEGORY && x.category !== REFUND_CATEGORY);
   const stock = rows.filter((x) => x.category === STOCK_CATEGORY);
   const inMonth = (list, start, end) => list.filter((x) => x.t >= start && (!end || x.t < end));
 
@@ -39,8 +41,9 @@ export const GET = route(async (request) => {
   const catTotal = Object.values(byCategory).reduce((t, v) => t + v, 0);
 
   // Twelve calendar buckets so a quiet month reads as zero instead of vanishing.
-  const trend = Array.from({ length: Math.min(months, 12) }, (_, k, arr) => {
-    const start = monthStart(arr.length - 1 - k);
+  const buckets = Math.min(months, 12);
+  const trend = Array.from({ length: buckets }, (_, k) => {
+    const start = monthStart(buckets - 1 - k);
     const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
     return {
       label: start.toLocaleDateString('en-GB', { month: 'short' }),

@@ -58,7 +58,7 @@ async function main() {
   }
 
   // Numbering starts at 1000 so the first invoice reads INV-1001.
-  for (const key of ['invoice', 'po', 'rx']) {
+  for (const key of ['invoice', 'po', 'rx', 'return']) {
     if (!(await Counter.findOne({ key }))) await Counter.create({ key, seq: 1000 });
   }
 

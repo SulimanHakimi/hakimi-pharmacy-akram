@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { makeFmt, fmtK, dateStr } from '@/lib/format';
-import { EXPENSE_CATEGORIES, STOCK_CATEGORY } from '@/lib/labels';
+import { EXPENSE_CATEGORIES, STOCK_CATEGORY, REFUND_CATEGORY } from '@/lib/labels';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const blank = () => ({ category: 'Rent', desc: '', amount: '', t: today() });
@@ -14,7 +14,14 @@ const blank = () => ({ category: 'Rent', desc: '', amount: '', t: today() });
 const LEGACY_AUTO = /^(PO-\d+ payment —|Supplier payment —)/i;
 const isAuto = (r) => !!r.auto || LEGACY_AUTO.test(r.desc || '');
 
-const FILTERS = [['all', 'All costs'], ['running', 'Running costs'], ['stock', 'Stock purchases']];
+const FILTERS = [
+  ['all', 'All'], ['running', 'Running costs'], ['stock', 'Stock purchases'], ['refund', 'Refunds']
+];
+
+// Refunds sit in the cash book but are not a cost, so they are their own filter
+// rather than part of the running-cost total.
+const bucket = (r) => r.category === STOCK_CATEGORY ? 'stock'
+  : r.category === REFUND_CATEGORY ? 'refund' : 'running';
 
 export default function ExpensesPage() {
   const { settings, L } = useApp();
@@ -59,7 +66,7 @@ export default function ExpensesPage() {
 
   const q = search.trim().toLowerCase();
   const rows = (data?.rows || [])
-    .filter((r) => filter === 'all' || (filter === 'stock' ? r.category === STOCK_CATEGORY : r.category !== STOCK_CATEGORY))
+    .filter((r) => filter === 'all' || bucket(r) === filter)
     .filter((r) => !q || [r.desc, r.category].some((v) => String(v || '').toLowerCase().includes(q)));
 
   return (
@@ -169,7 +176,9 @@ export default function ExpensesPage() {
                 <tr key={r._id}>
                   <td style={{ color: 'var(--muted)' }}>{dateStr(r.t)}</td>
                   <td>
-                    <span className={`pill ${r.category === STOCK_CATEGORY ? 'pill-blue' : 'pill-amber'}`}>{r.category}</span>
+                    <span className={`pill pill-${{ stock: 'blue', refund: 'green' }[bucket(r)] || 'amber'}`}>
+                      {r.category || 'Other'}
+                    </span>
                   </td>
                   <td>{r.desc}</td>
                   <td style={{ color: 'var(--muted)' }}>{r.recordedBy || '—'}</td>

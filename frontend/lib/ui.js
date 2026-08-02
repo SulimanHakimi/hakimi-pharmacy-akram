@@ -9,6 +9,21 @@ export const C = {
 
 export const avatar = (size) => ({ width: size, height: size, fontSize: size < 36 ? 13 : 15 });
 
+/**
+ * How much of a sale was taken at the counter and how much went on قرض.
+ * Invoices written before part payments existed carry no split, so they are read
+ * from the payment method: a credit sale was owed in full, anything else was paid
+ * in full.
+ */
+export function invoiceSplit(inv) {
+  const total = inv?.total || 0;
+  if (inv?.due === undefined || inv?.due === null) {
+    const onCredit = inv?.payment === 'Credit';
+    return { paid: onCredit ? 0 : total, due: onCredit ? total : 0 };
+  }
+  return { paid: inv.paid || 0, due: inv.due || 0 };
+}
+
 // Stock status drives both the inventory pill and the POS colour cue.
 export function stockStatus(drug, lowThreshold, monthsToExpiry) {
   if (drug.stock <= 0) return { label: 'Out of stock', cls: 'pill-red', color: C.red };

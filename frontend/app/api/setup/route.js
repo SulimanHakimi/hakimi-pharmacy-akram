@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 const ALL = { dash: 1, pos: 1, inv: 1, sup: 1, pur: 1, sales: 1, rx: 1, cust: 1, fin: 1, ana: 1, set: 1 };
 const SELLING_ONLY = { pos: 1, sales: 1 };
-const COLLECTIONS = ['User', 'Drug', 'Supplier', 'Customer', 'Invoice', 'Purchase', 'Prescription', 'Transaction', 'ActivityLog', 'Counter', 'Setting'];
+const COLLECTIONS = ['User', 'Drug', 'Supplier', 'Customer', 'Invoice', 'Return', 'Purchase', 'Prescription', 'Transaction', 'ActivityLog', 'Counter', 'Setting'];
 
 const initials = (name) => name.trim().split(/\s+/).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
 
@@ -87,7 +87,7 @@ export const POST = route(async (request) => {
   }
 
   // Numbering starts at 1000 so the first invoice reads INV-1001.
-  for (const key of ['invoice', 'po', 'rx']) {
+  for (const key of ['invoice', 'po', 'rx', 'return']) {
     if (!(await Counter.findOne({ key }))) await Counter.create({ key, seq: 1000 });
   }
 

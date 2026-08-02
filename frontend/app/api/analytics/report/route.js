@@ -1,6 +1,7 @@
 import { route, ok } from '@/lib/route';
 import { Drug, Transaction, getSettings } from '@/lib/models';
 import { periodData, breakdown, monthsTo } from '@/lib/analytics';
+import { STOCK_CATEGORY, REFUND_CATEGORY } from '@/lib/labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,11 +32,14 @@ export const GET = route(async (request) => {
 
   if (type === 'pl') {
     // Operating expenses are the real recorded expenses in the window, minus the
-    // stock purchases already counted inside cost of goods sold.
+    // stock purchases already counted inside cost of goods sold. Entries written
+    // before categories existed are recognised by their description instead.
     const expenses = await Transaction.find({ type: 'Expense', t: { $gte: pd.window.curFrom, $lt: pd.window.curTo } });
-    const opEx = expenses
-      .filter((e) => !/^(PO-|Supplier payment)/.test(e.desc))
-      .reduce((t, e) => t + e.amount, 0);
+    // Refunds are already netted out of revenue by `totals`, so counting them
+    // here as well would subtract the same money twice.
+    const skip = (e) => e.category === STOCK_CATEGORY || e.category === REFUND_CATEGORY
+      || (!e.category && /^(PO-|Supplier payment)/.test(e.desc || ''));
+    const opEx = expenses.filter((e) => !skip(e)).reduce((t, e) => t + e.amount, 0);
     return ok({
       type, title: 'Profit & Loss Report', range: pd.range,
       revenue: pd.cur.rev, cogs: pd.cur.rev - pd.cur.profit, grossProfit: pd.cur.profit,
@@ -44,7 +48,7 @@ export const GET = route(async (request) => {
   }
 
   const titles = { daily: 'Daily Sales Report', weekly: 'Weekly Sales Report', monthly: 'Monthly Sales Report', yearly: 'Yearly Sales Report' };
-  const b = await breakdown(pd.invoices);
+  const b = await breakdown(pd.invoices, pd.returns);
   return ok({
     type, title: titles[period], range: pd.range,
     rev: pd.cur.rev, profit: pd.cur.profit, invs: pd.cur.invs,

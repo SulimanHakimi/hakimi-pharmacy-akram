@@ -87,7 +87,7 @@ export default function FinancePage() {
         <div className="card">
           <div className="label">Receivable</div>
           <div className="stat-value" style={{ fontSize: 20 }}>{fmt(receivables.reduce((t, r) => t + r.amount, 0))}</div>
-          <div className="stat-sub">Customer credit (نسیه)</div>
+          <div className="stat-sub">Customer credit (قرض)</div>
         </div>
         <div className="card">
           <div className="label">Payable</div>

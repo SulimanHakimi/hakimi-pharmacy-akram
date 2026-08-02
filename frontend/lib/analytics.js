@@ -1,4 +1,4 @@
-import { Invoice, Drug } from './models';
+import { Invoice, Drug, Return } from './models';
 
 const DAY = 864e5;
 const dm = (t) => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
@@ -11,12 +11,26 @@ export function monthsTo(exp) {
   return (y - n.getFullYear()) * 12 + (m - 1 - n.getMonth());
 }
 
-export function totals(invoices) {
-  return invoices.reduce((a, i) => ({
+/**
+ * Sales figures for a set of invoices, with any returns in the same window taken
+ * back out. A return is a reversal, not a cost: the money leaves revenue and the
+ * cost of the goods leaves margin at the same time, so refunding a sale lands
+ * back where the pharmacy was before it.
+ */
+export function totals(invoices, returns = []) {
+  const t = invoices.reduce((a, i) => ({
     rev: a.rev + i.total,
-    profit: a.profit + i.items.reduce((t, it) => t + (it.price - it.buy) * it.qty, 0) - (i.disc || 0),
+    profit: a.profit + i.items.reduce((s, it) => s + (it.price - it.buy) * it.qty, 0) - (i.disc || 0),
     invs: a.invs + 1
   }), { rev: 0, profit: 0, invs: 0 });
+
+  for (const r of returns) {
+    t.rev -= r.amount;
+    t.profit -= r.items.reduce((s, it) => s + (it.price - it.buy) * it.qty, 0);
+    t.returned = (t.returned || 0) + r.amount;
+  }
+  t.returned = t.returned || 0;
+  return t;
 }
 
 // Calendar windows — never row counts, because days without sales have no rows.
@@ -56,21 +70,25 @@ function buildBars(period, invoices) {
 }
 
 // Real top sellers and category mix, straight from the invoice lines in the window.
-export async function breakdown(invoices) {
+export async function breakdown(invoices, returns = []) {
   const drugs = await Drug.find().select('name category');
   const categoryOf = Object.fromEntries(drugs.map((d) => [d.name, d.category]));
 
   const units = {}, revenue = {}, cats = {};
-  for (const inv of invoices) {
-    for (const it of inv.items) {
-      units[it.name] = (units[it.name] || 0) + it.qty;
-      revenue[it.name] = (revenue[it.name] || 0) + it.price * it.qty;
-      const c = categoryOf[it.name] || 'Uncategorised';
-      cats[c] = (cats[c] || 0) + it.price * it.qty;
-    }
-  }
+  // Returns are folded in with a negative sign so a drug that mostly comes back
+  // does not sit at the top of the best-seller list.
+  const add = (it, sign) => {
+    units[it.name] = (units[it.name] || 0) + sign * it.qty;
+    revenue[it.name] = (revenue[it.name] || 0) + sign * it.price * it.qty;
+    const c = categoryOf[it.name] || 'Uncategorised';
+    cats[c] = (cats[c] || 0) + sign * it.price * it.qty;
+  };
+  for (const inv of invoices) for (const it of inv.items) add(it, 1);
+  for (const ret of returns) for (const it of ret.items) add(it, -1);
 
-  const ranked = Object.keys(revenue).sort((a, b) => revenue[b] - revenue[a]);
+  for (const c of Object.keys(cats)) if (cats[c] <= 0) delete cats[c];
+
+  const ranked = Object.keys(revenue).filter((n) => revenue[n] > 0).sort((a, b) => revenue[b] - revenue[a]);
   const topNames = ranked.slice(0, 5);
   const catTotal = Object.values(cats).reduce((t, v) => t + v, 0);
 
@@ -86,10 +104,13 @@ export async function breakdown(invoices) {
 
 export async function periodData(period) {
   const w = windowFor(period);
-  const [curInvoices, prevInvoices, barSource] = await Promise.all([
+  const [curInvoices, prevInvoices, barSource, curReturns, prevReturns] = await Promise.all([
     Invoice.find({ date: { $gte: w.curFrom, $lt: w.curTo } }),
     Invoice.find({ date: { $gte: w.prevFrom, $lt: w.prevTo } }),
-    Invoice.find({ date: { $gte: new Date(midnight(new Date()).getTime() - 400 * DAY) } }).select('date total')
+    Invoice.find({ date: { $gte: new Date(midnight(new Date()).getTime() - 400 * DAY) } }).select('date total'),
+    // Counted in the window the drugs came back, not the window they were sold.
+    Return.find({ date: { $gte: w.curFrom, $lt: w.curTo } }),
+    Return.find({ date: { $gte: w.prevFrom, $lt: w.prevTo } })
   ]);
 
   const titles = {
@@ -104,9 +125,9 @@ export async function periodData(period) {
   };
 
   return {
-    cur: totals(curInvoices), prev: totals(prevInvoices),
+    cur: totals(curInvoices, curReturns), prev: totals(prevInvoices, prevReturns),
     bars: buildBars(period, barSource),
     title: titles[period], range: ranges[period],
-    invoices: curInvoices, window: w
+    invoices: curInvoices, returns: curReturns, window: w
   };
 }

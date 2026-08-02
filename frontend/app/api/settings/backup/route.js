@@ -4,7 +4,7 @@ import { getSettings, logAct } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 
-const COLLECTIONS = ['User', 'Drug', 'Supplier', 'Customer', 'Invoice', 'Purchase', 'Prescription', 'Transaction', 'ActivityLog', 'Counter', 'Setting'];
+const COLLECTIONS = ['User', 'Drug', 'Supplier', 'Customer', 'Invoice', 'Return', 'Purchase', 'Prescription', 'Transaction', 'ActivityLog', 'Counter', 'Setting'];
 
 // Serverless filesystems are read-only and wiped between invocations, so the backup
 // is returned to the browser as a download rather than written to disk.

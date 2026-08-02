@@ -1,19 +1,24 @@
 import { route, ok } from '@/lib/route';
 import { Invoice, Customer, Transaction } from '@/lib/models';
+import { invoiceSplit } from '@/lib/ui';
 
 export const dynamic = 'force-dynamic';
 
 const DAY = 864e5;
+const owed = (inv) => invoiceSplit(inv).due;
 
 /**
- * Everything sold on نسیه. The outstanding balance lives on the customer, not on
+ * Everything sold on قرض. The outstanding balance lives on the customer, not on
  * the invoice — a repayment clears the balance rather than a specific sale — so
  * this returns the credit sales and the balances side by side and does not
  * pretend to know which individual invoice a payment settled.
  */
 export const GET = route(async () => {
   const [sales, customers, repayments] = await Promise.all([
-    Invoice.find({ payment: 'Credit' }).sort({ date: -1 }).limit(400),
+    // Part payments put money on قرض too. `payment: 'Credit'` also catches the
+    // invoices written before the split existed, which carry no `due`.
+    Invoice.find({ $or: [{ payment: { $in: ['Credit', 'Partial'] } }, { due: { $gt: 0 } }] })
+      .sort({ date: -1 }).limit(400),
     Customer.find().sort({ name: 1 }),
     Transaction.find({ category: 'Credit repayment' }).sort({ t: -1 }).limit(200)
   ]);
@@ -33,7 +38,7 @@ export const GET = route(async () => {
         phone: c.phone || '',
         credit: c.credit,
         sales: own.length,
-        loaned: own.reduce((t, i) => t + i.total, 0),
+        loaned: own.reduce((t, i) => t + owed(i), 0),
         lastLoan: own.length ? own[0].date : null,
         oldestLoan: oldest,
         daysOld: oldest ? Math.floor((Date.now() - new Date(oldest).getTime()) / DAY) : null
@@ -50,8 +55,8 @@ export const GET = route(async () => {
     repayments,
     outstanding: debtors.reduce((t, d) => t + d.credit, 0),
     overdue: debtors.filter((d) => d.daysOld !== null && d.daysOld > 30).reduce((t, d) => t + d.credit, 0),
-    loanedMonth: sales.filter((i) => i.date >= monthStart).reduce((t, i) => t + i.total, 0),
+    loanedMonth: sales.filter((i) => i.date >= monthStart).reduce((t, i) => t + owed(i), 0),
     repaidMonth: repayments.filter((r) => r.t >= monthStart).reduce((t, r) => t + r.amount, 0),
-    loaned30: sales.filter((i) => i.date > cut30).reduce((t, i) => t + i.total, 0)
+    loaned30: sales.filter((i) => i.date > cut30).reduce((t, i) => t + owed(i), 0)
   });
 }, { perms: ['cust', 'fin'] });
