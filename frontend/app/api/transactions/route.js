@@ -1,5 +1,8 @@
 import { route, ok, fail, body } from '@/lib/route';
 import { Transaction, Customer, Supplier, logAct } from '@/lib/models';
+import { ALL_EXPENSE_CATEGORIES } from '@/lib/labels';
+
+const INCOME_CATEGORIES = ['Sales', 'Credit repayment', 'Other'];
 
 export const dynamic = 'force-dynamic';
 
@@ -25,11 +28,21 @@ export const GET = route(async () => {
 }, { perms: ['fin'] });
 
 export const POST = route(async (request, { user }) => {
-  const { type, desc, amount } = await body(request);
+  const { type, desc, amount, category, t } = await body(request);
   if (!desc?.trim() || !(+amount)) return fail('Description and amount are required');
+  if (+amount <= 0) return fail('Amount must be more than zero');
   if (!['Income', 'Expense'].includes(type)) return fail('Invalid entry type');
 
-  const tx = await Transaction.create({ type, desc: desc.trim(), amount: +amount });
+  const allowed = type === 'Expense' ? ALL_EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+  const cat = (category || 'Other').trim();
+  if (!allowed.includes(cat)) return fail(`"${cat}" is not a ${type.toLowerCase()} category`);
+
+  const when = t ? new Date(t) : new Date();
+  if (Number.isNaN(when.getTime())) return fail('Invalid date');
+
+  const tx = await Transaction.create({
+    type, category: cat, desc: desc.trim(), amount: +amount, t: when, recordedBy: user.name
+  });
   await logAct(user.name, `Recorded ${type.toLowerCase()}: ${tx.desc}`);
   return ok(tx, 201);
 }, { perms: ['fin'] });

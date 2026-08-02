@@ -1,5 +1,6 @@
 import { route, ok, fail, body } from '@/lib/route';
 import { Purchase, Drug, Supplier, Transaction, nextSeq, logAct } from '@/lib/models';
+import { STOCK_CATEGORY } from '@/lib/labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +31,10 @@ export const POST = route(async (request, { user }) => {
 
   sup.lastOrder = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   if (paid) {
-    await Transaction.create({ type: 'Expense', desc: `${po.po} payment — ${sup.name}`, amount: total });
+    await Transaction.create({
+      type: 'Expense', category: STOCK_CATEGORY, desc: `${po.po} payment — ${sup.name}`,
+      amount: total, auto: true, recordedBy: user.name
+    });
   } else {
     sup.balance += total;
   }

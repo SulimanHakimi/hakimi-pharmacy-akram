@@ -7,14 +7,26 @@ import { LABELS, DEFAULT_PHARMACY } from './labels';
 const AppContext = createContext(null);
 
 // Order also decides which page a role lands on after signing in.
-export const SCREEN_ORDER = ['dash', 'pos', 'inv', 'sup', 'pur', 'sales', 'rx', 'cust', 'fin', 'ana', 'set'];
+export const SCREEN_ORDER = ['dash', 'pos', 'inv', 'sup', 'pur', 'sales', 'rx', 'cust', 'loans', 'fin', 'exp', 'ana', 'set'];
 export const SCREEN_PATH = {
   dash: '/dashboard', pos: '/pos', inv: '/inventory', sup: '/suppliers', pur: '/purchases',
-  sales: '/invoices', rx: '/prescriptions', cust: '/customers', fin: '/finance', ana: '/analytics', set: '/settings'
+  sales: '/invoices', rx: '/prescriptions', cust: '/customers', loans: '/loans',
+  fin: '/finance', exp: '/expenses', ana: '/analytics', set: '/settings'
 };
 
+// A screen normally needs the permission of the same name. These two are views over
+// data the existing permissions already cover, so they reuse them — that keeps
+// accounts created before these screens existed working without a migration.
+export const SCREEN_PERMS = {
+  loans: ['cust', 'fin'],
+  exp: ['fin']
+};
+
+export const canSee = (user, screen) =>
+  (SCREEN_PERMS[screen] || [screen]).some((p) => !!user?.perms?.[p]);
+
 export function firstScreen(user) {
-  const k = SCREEN_ORDER.find((s) => user?.perms?.[s]);
+  const k = SCREEN_ORDER.find((s) => canSee(user, s));
   return k ? SCREEN_PATH[k] : '/';
 }
 

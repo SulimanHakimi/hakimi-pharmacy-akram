@@ -77,7 +77,7 @@ Invoice, purchase order and prescription numbers start at 1001.
 
 Completing a sale is the flow that touches most of the system. `POST /api/invoices`
 validates stock, writes the invoice, decrements each drug, creates the customer if the
-phone is new, and either records cash income or adds the total to that customer's credit
+customer is new (matched on phone when one was entered, otherwise on name), and either records cash income or adds the total to that customer's credit
 when the sale is on نسیه.
 
 Receiving a purchase order adds the quantity to stock and updates the drug's buy price,

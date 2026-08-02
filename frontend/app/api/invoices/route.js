@@ -12,7 +12,7 @@ export const GET = route(async (request) => {
 export const POST = route(async (request, { user }) => {
   const { items, customer, phone, doctor, discount, discMode, payMode } = await body(request);
   if (!Array.isArray(items) || !items.length) return fail('The cart is empty');
-  if (!customer?.trim() || !phone?.trim()) return fail('Customer name and phone number are required');
+  if (!customer?.trim()) return fail('Customer name is required');
 
   const settings = await getSettings();
 
@@ -36,7 +36,7 @@ export const POST = route(async (request, { user }) => {
   const seq = await nextSeq('invoice');
   const inv = await Invoice.create({
     no: `INV-${seq}`, date: new Date(),
-    customer: customer.trim(), phone: phone.trim(), doctor: (doctor || '').trim(),
+    customer: customer.trim(), phone: (phone || '').trim(), doctor: (doctor || '').trim(),
     items: invItems, sub, disc, vat, total, payment, servedBy: user.name
   });
 
@@ -45,7 +45,10 @@ export const POST = route(async (request, { user }) => {
   }
 
   // Customers are created on their first purchase.
-  const existing = await Customer.findOne({ $or: [{ phone: inv.phone }, { name: inv.customer }] });
+  // Match on phone only when one was given — otherwise every walk-in without a
+  // phone would resolve to the same blank-phone customer record.
+  const match = inv.phone ? [{ phone: inv.phone }, { name: inv.customer }] : [{ name: inv.customer }];
+  const existing = await Customer.findOne({ $or: match });
   if (existing) {
     if (payment === 'Credit') { existing.credit += total; await existing.save(); }
   } else {
@@ -57,7 +60,10 @@ export const POST = route(async (request, { user }) => {
   }
 
   if (payment === 'Cash') {
-    await Transaction.create({ type: 'Income', desc: `Sale ${inv.no} — ${inv.customer}`, amount: total });
+    await Transaction.create({
+      type: 'Income', category: 'Sales', desc: `Sale ${inv.no} — ${inv.customer}`,
+      amount: total, auto: true, recordedBy: user.name
+    });
   }
 
   await logAct(user.name, `Completed ${payment.toLowerCase()} sale ${inv.no}`);

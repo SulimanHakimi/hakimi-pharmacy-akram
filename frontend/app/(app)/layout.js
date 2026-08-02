@@ -3,14 +3,14 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
-import { useApp, SCREEN_PATH, firstScreen } from '@/lib/store';
+import { useApp, SCREEN_PATH, firstScreen, canSee } from '@/lib/store';
 
 export default function AppLayout({ children }) {
   const { user } = useApp();
   const router = useRouter();
   const pathname = usePathname();
   const key = Object.keys(SCREEN_PATH).find((k) => SCREEN_PATH[k] === pathname);
-  const allowed = !key || !!user?.perms?.[key];
+  const allowed = !key || canSee(user, key);
 
   useEffect(() => {
     if (user === undefined) return;                  // session still loading

@@ -95,8 +95,16 @@ const prescriptionSchema = new mongoose.Schema({
 const transactionSchema = new mongoose.Schema({
   t: { type: Date, default: Date.now },
   type: { type: String, enum: ['Income', 'Expense'], required: true },
+  // Groups the cash book for the costs breakdown. Income uses 'Sales' or
+  // 'Credit repayment'; expenses use one of ALL_EXPENSE_CATEGORIES.
+  category: { type: String, default: 'Other' },
   desc: { type: String, required: true },
-  amount: { type: Number, required: true }
+  amount: { type: Number, required: true },
+  // Written by a sale, purchase or settlement rather than typed in by hand.
+  // Those entries are read-only — deleting one would desync a stock, supplier
+  // or customer balance that was moved at the same time.
+  auto: { type: Boolean, default: false },
+  recordedBy: String
 }, { timestamps: true });
 
 const activityLogSchema = new mongoose.Schema({

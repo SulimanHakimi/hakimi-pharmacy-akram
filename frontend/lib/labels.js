@@ -7,10 +7,24 @@ export const LABELS = {
   sales: 'Invoices',
   rx: 'Prescriptions',
   cust: 'Customers',
+  loans: 'Loan Sales',
   fin: 'Finance',
+  exp: 'Costs & Expenses',
   ana: 'Analytics & Reports',
   set: 'Settings'
 };
+
+// Running costs the pharmacy books by hand. Buying stock is deliberately not on this
+// list — purchases and supplier payments book themselves under STOCK_CATEGORY so the
+// two never get mixed up in the breakdown.
+export const EXPENSE_CATEGORIES = [
+  'Rent', 'Salaries', 'Utilities', 'Transport', 'Supplies',
+  'Maintenance', 'Licences & fees', 'Marketing', 'Bank charges', 'Other'
+];
+
+export const STOCK_CATEGORY = 'Stock purchase';
+
+export const ALL_EXPENSE_CATEGORIES = [...EXPENSE_CATEGORIES, STOCK_CATEGORY];
 
 // Name and address are stored in the database and edited under Settings; these are
 // only the fallbacks used before the settings load.

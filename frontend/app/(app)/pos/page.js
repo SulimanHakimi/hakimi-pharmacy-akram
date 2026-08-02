@@ -67,7 +67,10 @@ export default function PosPage() {
 
   function onBarcode(e) {
     const v = e.target.value.trim();
-    const d = drugs.find((x) => x.barcode && x.barcode === v);
+    // Barcodes are matched case-insensitively — scanners and hand-typed codes
+    // don't always agree with the case the drug was entered with.
+    const key = v.toLowerCase();
+    const d = drugs.find((x) => x.barcode && x.barcode.trim().toLowerCase() === key);
     if (d) { addToCart(d._id); setBcode(''); } else setBcode(v);
   }
 
@@ -81,8 +84,8 @@ export default function PosPage() {
   async function checkout() {
     if (!cart.length || busy) return;
     setTouched(true);
-    if (!customer.trim() || !phone.trim()) {
-      setError('Customer name and phone number are required to complete the sale.');
+    if (!customer.trim()) {
+      setError('Customer name is required to complete the sale.');
       return;
     }
     setBusy(true);
@@ -172,8 +175,8 @@ export default function PosPage() {
           <div className="form-grid" style={{ marginBottom: 12 }}>
             <input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Customer name (required)"
               className={`field${touched && !customer.trim() ? ' invalid' : ''}`} />
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number (required)"
-              className={`field${touched && !phone.trim() ? ' invalid' : ''}`} />
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number (optional)"
+              className="field" />
             <input value={doctor} onChange={(e) => setDoctor(e.target.value)} placeholder="Prescribing doctor (optional)" className="field" />
             {error && <div className="banner banner-error">{error}</div>}
           </div>

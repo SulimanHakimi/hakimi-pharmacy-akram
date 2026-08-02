@@ -4,7 +4,11 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { makeFmt, dateStr } from '@/lib/format';
+import { EXPENSE_CATEGORIES } from '@/lib/labels';
 import { C } from '@/lib/ui';
+
+const INCOME_CATEGORIES = ['Sales', 'Credit repayment', 'Other'];
+const blankEntry = () => ({ type: 'Income', category: 'Other', desc: '', amount: '' });
 
 export default function FinancePage() {
   const { settings, L } = useApp();
@@ -13,7 +17,11 @@ export default function FinancePage() {
   const [show, setShow] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ type: 'Income', desc: '', amount: '' });
+  const [form, setForm] = useState(blankEntry());
+
+  // The two entry types have different category lists, so switching resets the
+  // choice rather than carrying e.g. "Rent" over to an income entry.
+  const setType = (type) => setForm((f) => ({ ...f, type, category: type === 'Expense' ? 'Other' : 'Sales' }));
 
   const load = () => api('/transactions').then(setData).catch(() => {});
   useEffect(() => { load(); }, []);
@@ -25,7 +33,7 @@ export default function FinancePage() {
     try {
       await api('/transactions', { method: 'POST', body: form });
       setShow(false);
-      setForm({ type: 'Income', desc: '', amount: '' });
+      setForm(blankEntry());
       load();
     } catch (e) { setError(e.message); }
     setBusy(false);
@@ -56,7 +64,7 @@ export default function FinancePage() {
     <>
       <div className="page-head">
         <h1>{L.fin}</h1>
-        <button onClick={() => { setForm({ type: 'Income', desc: '', amount: '' }); setError(''); setShow(true); }} className="btn btn-primary">
+        <button onClick={() => { setForm(blankEntry()); setError(''); setShow(true); }} className="btn btn-primary">
           + Record entry
         </button>
       </div>
@@ -95,15 +103,16 @@ export default function FinancePage() {
             {!data?.transactions?.length ? (
               <div className="empty">No entries yet.</div>
             ) : (
-              <table className="data narrow" style={{ minWidth: 480 }}>
+              <table className="data narrow" style={{ minWidth: 560 }}>
                 <thead>
-                  <tr><th>Date</th><th>Description</th><th>Type</th><th className="num">Amount</th></tr>
+                  <tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th className="num">Amount</th></tr>
                 </thead>
                 <tbody>
                   {data.transactions.map((x) => (
                     <tr key={x._id}>
                       <td style={{ color: 'var(--muted)' }}>{dateStr(x.t)}</td>
                       <td>{x.desc}</td>
+                      <td style={{ color: 'var(--muted)' }}>{x.category || '—'}</td>
                       <td><span className={`pill ${x.type === 'Income' ? 'pill-green' : 'pill-red'}`}>{x.type}</span></td>
                       <td className="num" style={{ fontWeight: 600, color: x.type === 'Income' ? 'var(--green)' : 'var(--red)' }}>
                         {x.type === 'Income' ? '+' : '−'}{fmt(x.amount)}
@@ -155,9 +164,14 @@ export default function FinancePage() {
             <h2>Record entry</h2>
             <div className="form-grid">
               <div style={{ display: 'flex', background: 'var(--blue-soft)', borderRadius: 999, padding: 4 }}>
-                <button onClick={() => setForm((f) => ({ ...f, type: 'Income' }))} style={typeBtn(form.type === 'Income')}>Income</button>
-                <button onClick={() => setForm((f) => ({ ...f, type: 'Expense' }))} style={typeBtn(form.type === 'Expense')}>Expense</button>
+                <button onClick={() => setType('Income')} style={typeBtn(form.type === 'Income')}>Income</button>
+                <button onClick={() => setType('Expense')} style={typeBtn(form.type === 'Expense')}>Expense</button>
               </div>
+              <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className="field">
+                {(form.type === 'Expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
               <input value={form.desc} onChange={(e) => setForm((f) => ({ ...f, desc: e.target.value }))}
                 placeholder="Description, e.g. Shop rent" className="field" />
               <input value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}

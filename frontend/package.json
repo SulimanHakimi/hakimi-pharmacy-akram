@@ -8,7 +8,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "init": "node scripts/init.mjs"
+    "init": "node scripts/init.mjs",
+    "backfill": "node scripts/backfill-categories.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

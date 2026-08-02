@@ -1,5 +1,6 @@
 import { route, ok, fail, body } from '@/lib/route';
 import { Supplier, Transaction, logAct } from '@/lib/models';
+import { STOCK_CATEGORY } from '@/lib/labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,10 @@ export const POST = route(async (request, { params, user }) => {
 
   s.balance -= value;
   await s.save();
-  await Transaction.create({ type: 'Expense', desc: `Supplier payment — ${s.name}`, amount: value });
+  await Transaction.create({
+    type: 'Expense', category: STOCK_CATEGORY, desc: `Supplier payment — ${s.name}`,
+    amount: value, auto: true, recordedBy: user.name
+  });
   await logAct(user.name, `Paid ${value} to ${s.name}`);
   return ok(s);
 }, { perms: ['sup', 'fin'] });
