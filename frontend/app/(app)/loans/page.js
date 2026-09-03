@@ -258,8 +258,9 @@ export default function LoansPage() {
 
       <div style={{ fontSize: 12, color: 'var(--faint)', marginTop: 12, maxWidth: 680 }}>
         Paying from <strong>Loan sales</strong> settles that one invoice and takes the same amount off the
-        customer&rsquo;s balance. Collecting from <strong>Outstanding</strong> clears the balance without
-        naming a sale — use it when the customer just hands over money against what they owe.
+        customer&rsquo;s balance. Collecting from <strong>Outstanding</strong> is for when the customer just
+        hands over money without naming a sale — it comes off their oldest unpaid sales first, so the two
+        views never disagree.
       </div>
 
       {collect && (

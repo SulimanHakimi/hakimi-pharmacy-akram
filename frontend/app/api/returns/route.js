@@ -1,6 +1,7 @@
 import { route, ok, fail, body } from '@/lib/route';
 import { Return, Invoice, Drug, Customer, Transaction, Counter, nextSeq, logAct } from '@/lib/models';
 import { REFUND_CATEGORY } from '@/lib/labels';
+import { invoiceOwed } from '@/lib/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,10 +67,13 @@ export const POST = route(async (request, { user }) => {
   const amount = inv.sub > 0 ? lineValue * (inv.total / inv.sub) : lineValue;
   const discShare = (inv.disc || 0) * share;
 
-  // Clear what this customer still owes before paying any cash out.
-  const customer = await Customer.findOne({ name: inv.customer });
-  const creditCleared = customer ? Math.min(amount, customer.credit || 0) : 0;
+  // Cancel what THIS bill still owes before paying any cash out. It has to be this
+  // bill's own debt and not the customer's whole balance: goods coming back off a
+  // sale they paid cash for are owed back in cash, not quietly netted against a
+  // قرض from some other day that the customer never asked to have settled.
+  const creditCleared = Math.min(amount, invoiceOwed(inv));
   const refunded = amount - creditCleared;
+  const customer = await Customer.findOne({ name: inv.customer });
 
   const putBack = restock !== false;
 
@@ -91,9 +95,18 @@ export const POST = route(async (request, { user }) => {
     }
   }
 
+  // The sale and the balance move together. Taking it off the customer alone would
+  // leave this invoice still reading as unpaid on the Loan Sales screen, and
+  // collecting against it there later would book income for money nobody ever
+  // handed over. A sale older than the customer record has no balance to reduce,
+  // but the invoice is cleared either way — the goods came back.
   if (creditCleared > 0) {
-    customer.credit = Math.max(0, customer.credit - creditCleared);
-    await customer.save();
+    inv.settled = (inv.settled || 0) + creditCleared;
+    await inv.save();
+    if (customer) {
+      customer.credit = Math.max(0, (customer.credit || 0) - creditCleared);
+      await customer.save();
+    }
   }
 
   // Cash leaving the till. Categorised as a refund so the costs screen and the

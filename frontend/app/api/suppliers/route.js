@@ -1,10 +1,23 @@
 import { route, ok, fail, body } from '@/lib/route';
-import { Supplier, logAct } from '@/lib/models';
+import { Supplier, Purchase, logAct } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 
 // Names feed the add-drug and purchase-order pickers, so any signed-in account may read.
-export const GET = route(async () => ok(await Supplier.find().sort({ name: 1 })));
+// `purchased`/`orders` are the lifetime totals of what has been bought from each
+// supplier, summed from the purchase orders and matched back on the supplier name.
+export const GET = route(async () => {
+  const [suppliers, bySupplier] = await Promise.all([
+    Supplier.find().sort({ name: 1 }),
+    Purchase.aggregate([{ $group: { _id: '$supplier', total: { $sum: '$total' }, orders: { $sum: 1 } } }])
+  ]);
+  const stats = Object.fromEntries(bySupplier.map((r) => [r._id, r]));
+  return ok(suppliers.map((s) => ({
+    ...s.toObject(),
+    purchased: stats[s.name]?.total || 0,
+    orders: stats[s.name]?.orders || 0
+  })));
+});
 
 export const POST = route(async (request, { user }) => {
   const { name, person, phone, address } = await body(request);

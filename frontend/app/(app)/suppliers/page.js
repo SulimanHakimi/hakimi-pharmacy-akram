@@ -64,7 +64,10 @@ export default function SuppliersPage() {
         <div className="card empty">No suppliers yet. Add one to start recording purchases.</div>
       ) : (
         <div className="grid-2">
-          {suppliers.map((s) => (
+          {suppliers.map((s) => {
+            const supplied = drugs.filter((d) => d.supplier === s.name);
+            const stockValue = supplied.reduce((sum, d) => sum + (d.buy || 0) * (d.stock || 0), 0);
+            return (
             <div key={s._id} className="card" style={{ borderRadius: 14, padding: 18 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                 <div className="avatar" style={avatar(40)}>{initialsOf(s.name)}</div>
@@ -79,7 +82,17 @@ export default function SuppliersPage() {
               <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', paddingTop: 12, borderTop: '1px solid var(--hairline)' }}>
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--muted)' }}>Drugs supplied</div>
-                  <div style={{ fontSize: 15, fontWeight: 600 }} className="tnum">{drugs.filter((d) => d.supplier === s.name).length}</div>
+                  <div style={{ fontSize: 15, fontWeight: 600 }} className="tnum">{supplied.length}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>Stock value</div>
+                  <div style={{ fontSize: 15, fontWeight: 600 }} className="tnum">{stockValue ? fmt(stockValue) : '—'}</div>
+                  <div style={{ fontSize: 10, color: 'var(--faint)' }}>at buy price</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>Total purchased</div>
+                  <div style={{ fontSize: 15, fontWeight: 600 }} className="tnum">{s.purchased ? fmt(s.purchased) : '—'}</div>
+                  <div style={{ fontSize: 10, color: 'var(--faint)' }}>{s.orders ? `${s.orders} order${s.orders > 1 ? 's' : ''}` : 'No orders'}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--muted)' }}>Outstanding balance</div>
@@ -96,7 +109,8 @@ export default function SuppliersPage() {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

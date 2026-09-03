@@ -6,6 +6,7 @@ export const LABELS = {
   pur: 'Purchases',
   sales: 'Invoices',
   rx: 'Prescriptions',
+  proc: 'Procedures',
   cust: 'Customers',
   loans: 'Loan Sales',
   fin: 'Finance',
@@ -32,6 +33,7 @@ export const GRANTABLE = [
   { key: 'pur', kind: 'screen', label: 'Purchases', hint: 'Purchase orders and receiving stock' },
   { key: 'sales', kind: 'screen', label: 'Invoices', hint: 'Past sales, reprints and returns' },
   { key: 'rx', kind: 'screen', label: 'Prescriptions', hint: 'Record and dispense prescriptions' },
+  { key: 'proc', kind: 'screen', label: 'Procedures', hint: 'ختنه and تطبیق — the fee and the drugs used' },
   { key: 'cust', kind: 'screen', label: 'Customers', hint: 'Customer list, history and قرض balances' },
   { key: 'fin', kind: 'screen', label: 'Finance & Costs', hint: 'Cash book, costs, loans and expenses' },
   { key: 'ana', kind: 'screen', label: 'Analytics & Reports', hint: 'Sales reports and profit and loss' },
@@ -39,6 +41,22 @@ export const GRANTABLE = [
 ];
 
 export const ROLES = ['Administrator', 'Pharmacist', 'Salesperson', 'Stock keeper', 'Accountant'];
+
+/**
+ * The work the pharmacy does besides selling over the counter. Held in Dari
+ * because that is what the staff call it and what prints on the invoice line.
+ */
+export const PROCEDURE_TYPES = ['ختنه', 'تطبیق'];
+
+// English gloss for the screens, which stay in English like the rest of the app.
+export const PROCEDURE_LABELS = { 'ختنه': 'Circumcision', 'تطبیق': 'Injection / dressing' };
+
+/**
+ * How the fee reads as a line on the invoice. The fee rides on the same sale as
+ * the drugs, so the patient gets one bill and the reports get one figure; this is
+ * the line that carries it.
+ */
+export const serviceLineName = (type) => `${type} — فیس خدمات`;
 
 // Running costs the pharmacy books by hand. Buying stock is deliberately not on this
 // list — purchases and supplier payments book themselves under STOCK_CATEGORY so the
@@ -49,6 +67,16 @@ export const EXPENSE_CATEGORIES = [
 ];
 
 export const STOCK_CATEGORY = 'Stock purchase';
+
+// Cash the owner puts into the till from their own pocket — an opening float or a
+// top-up to cover a big stock order. It lands in the cash box, so it is booked as
+// income, but it is not a sale: revenue and profit are read off invoices, never the
+// cash book, so this money never counts towards either.
+export const CAPITAL_CATEGORY = 'Capital';
+
+// Income entries on the Finance cash book. 'Sales' and 'Credit repayment' are written
+// automatically at the counter; 'Capital' and 'Other' are the ones typed in by hand.
+export const INCOME_CATEGORIES = ['Sales', 'Credit repayment', CAPITAL_CATEGORY, 'Other'];
 
 // Money handed back on a return. It reverses a sale rather than costing the
 // pharmacy anything, so it is kept out of the running-cost totals and out of the

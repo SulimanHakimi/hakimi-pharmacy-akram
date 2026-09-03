@@ -25,8 +25,18 @@ export default function ReportModal({ report, onClose }) {
   const plRows = report.type === 'pl' ? [
     { label: 'Revenue', amt: fmt(report.revenue), fs: 13, w: 600, c: 'var(--text)' },
     { label: 'Cost of goods sold', amt: '−' + fmt(report.cogs), fs: 13, w: 400, c: 'var(--muted)' },
+    // Already inside the line above — spelled out so a period with spoilage in it can
+    // be explained, and left out entirely when there was none.
+    ...(report.writtenOff > 0
+      ? [{ label: 'of which stock written off', amt: fmt(report.writtenOff), fs: 12, w: 400, c: 'var(--faint)' }]
+      : []),
     { label: 'Gross profit', amt: fmt(report.grossProfit), fs: 13, w: 600, c: 'var(--text)' },
     { label: 'Operating expenses', amt: '−' + fmt(report.opEx), fs: 13, w: 400, c: 'var(--muted)' },
+    // Owner cash added in the period. Only shown when there is some, so an ordinary
+    // trading period reads exactly as it did before.
+    ...(report.capital > 0
+      ? [{ label: 'Capital added', amt: '+' + fmt(report.capital), fs: 13, w: 400, c: 'var(--green)' }]
+      : []),
     { label: 'Net profit', amt: (report.netProfit >= 0 ? '' : '−') + fmt(Math.abs(report.netProfit)), fs: 15, w: 700, c: report.netProfit >= 0 ? 'var(--green)' : 'var(--red)' }
   ] : [];
 

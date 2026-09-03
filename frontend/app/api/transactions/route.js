@@ -1,8 +1,6 @@
 import { route, ok, fail, body } from '@/lib/route';
 import { Transaction, Customer, Supplier, logAct } from '@/lib/models';
-import { ALL_EXPENSE_CATEGORIES } from '@/lib/labels';
-
-const INCOME_CATEGORIES = ['Sales', 'Credit repayment', 'Other'];
+import { ALL_EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/lib/labels';
 
 export const dynamic = 'force-dynamic';
 

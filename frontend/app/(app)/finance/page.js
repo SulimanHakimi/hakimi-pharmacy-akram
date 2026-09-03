@@ -4,21 +4,26 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { makeFmt, dateStr } from '@/lib/format';
-import { EXPENSE_CATEGORIES } from '@/lib/labels';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CAPITAL_CATEGORY } from '@/lib/labels';
 import { C } from '@/lib/ui';
 import Loader from '@/components/Loader';
 
-const INCOME_CATEGORIES = ['Sales', 'Credit repayment', 'Other'];
 const blankEntry = () => ({ type: 'Income', category: 'Other', desc: '', amount: '' });
+// The "Add cash" shortcut is a capital injection: income, locked to the Capital category.
+const blankCash = () => ({ type: 'Income', category: CAPITAL_CATEGORY, desc: '', amount: '' });
 
 export default function FinancePage() {
   const { settings, L } = useApp();
   const fmt = makeFmt(settings.currency);
   const [data, setData] = useState(null);
   const [show, setShow] = useState(false);
+  const [mode, setMode] = useState('entry');           // 'entry' = full cash book, 'cash' = add-cash shortcut
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(blankEntry());
+
+  const openEntry = () => { setMode('entry'); setForm(blankEntry()); setError(''); setShow(true); };
+  const openCash = () => { setMode('cash'); setForm(blankCash()); setError(''); setShow(true); };
 
   // The two entry types have different category lists, so switching resets the
   // choice rather than carrying e.g. "Rent" over to an income entry.
@@ -32,7 +37,12 @@ export default function FinancePage() {
     setBusy(true);
     setError('');
     try {
-      await api('/transactions', { method: 'POST', body: form });
+      // Adding cash keeps the note optional — an owner topping up the till should not
+      // have to name a reason, so fall back to a plain description.
+      const body = mode === 'cash' && !form.desc.trim()
+        ? { ...form, desc: 'Cash added to pharmacy' }
+        : form;
+      await api('/transactions', { method: 'POST', body });
       setShow(false);
       setForm(blankEntry());
       load();
@@ -64,9 +74,10 @@ export default function FinancePage() {
   const head = (
     <div className="page-head">
       <h1>{L.fin}</h1>
-      <button onClick={() => { setForm(blankEntry()); setError(''); setShow(true); }} className="btn btn-primary">
-        + Record entry
-      </button>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={openCash} className="btn btn-ghost">+ Add cash</button>
+        <button onClick={openEntry} className="btn btn-primary">+ Record entry</button>
+      </div>
     </div>
   );
 
@@ -166,7 +177,30 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {show && (
+      {show && mode === 'cash' && (
+        <div className="overlay">
+          <div className="modal modal-sm">
+            <h2>Add cash to the pharmacy</h2>
+            <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 14px' }}>
+              Money you put into the till from your own pocket. It raises the cash in hand but
+              is not counted as a sale.
+            </p>
+            <div className="form-grid">
+              <input value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                placeholder="Amount" type="number" min="0" className="field" autoFocus />
+              <input value={form.desc} onChange={(e) => setForm((f) => ({ ...f, desc: e.target.value }))}
+                placeholder="Note (optional), e.g. Opening float" className="field" />
+              {error && <div className="banner banner-error">{error}</div>}
+            </div>
+            <div className="modal-actions">
+              <button onClick={() => setShow(false)} className="btn btn-cancel">Cancel</button>
+              <button onClick={submit} disabled={busy} className="btn btn-primary">{busy ? 'Adding…' : 'Add cash'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {show && mode === 'entry' && (
         <div className="overlay">
           <div className="modal modal-sm">
             <h2>Record entry</h2>

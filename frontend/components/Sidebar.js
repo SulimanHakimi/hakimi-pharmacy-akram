@@ -13,6 +13,7 @@ const ICONS = {
   pur: <><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V2.5h6V4"></path><path d="M9 10h6M9 14h6"></path></>,
   sales: <><path d="M6 2h9l4 4v16H6z"></path><path d="M15 2v4h4"></path><path d="M9 12h6M9 16h6"></path></>,
   rx: <><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M8 7h8M8 11h5"></path><path d="M13 15l5 5M18 15l-5 5"></path></>,
+  proc: <><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path><path d="M12 11v5M9.5 13.5h5"></path></>,
   cust: <><circle cx="9" cy="8" r="3.5"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"></path><circle cx="17" cy="9" r="2.5"></circle><path d="M16.5 14.5c2.6 0.4 4.5 2.7 4.5 5.5"></path></>,
   loans: <><path d="M3 7.5h13a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7.5z"></path><path d="M3 7.5 15 4.2a1.4 1.4 0 0 1 1.8 1.1l.4 2.2"></path><circle cx="14" cy="13" r="1.6"></circle></>,
   fin: <><circle cx="12" cy="12" r="9"></circle><path d="M15 9.3c-.6-.8-1.6-1.3-3-1.3-1.9 0-3 .9-3 2s1.1 1.7 3 2c1.9.3 3 1 3 2s-1.1 2-3 2c-1.4 0-2.4-.5-3-1.3"></path><path d="M12 6.5v11"></path></>,

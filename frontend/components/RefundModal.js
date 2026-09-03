@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { makeFmt } from '@/lib/format';
+import { invoiceOwed } from '@/lib/ui';
 import Loader from '@/components/Loader';
 
 /**
  * Take drugs back off a sale. Quantities are capped at what is still returnable,
  * and the summary spells out where the money goes before anything is saved —
- * against the customer's قرض first, cash out of the till for the rest.
+ * against whatever this bill still owes first, cash out of the till for the rest.
  */
 export default function RefundModal({ invoice, onClose, onDone }) {
   const { settings } = useApp();
@@ -28,7 +29,9 @@ export default function RefundModal({ invoice, onClose, onDone }) {
   }, [invoice._id]);
 
   // What is left on each line after everything already taken back.
-  const lines = useMemo(() => invoice.items.map((it) => ({
+  // Procedure fees are on the invoice too, and there is nothing to take back on
+  // one — the work was done. Only goods can come off a bill here.
+  const lines = useMemo(() => invoice.items.filter((it) => !it.service).map((it) => ({
     ...it,
     left: it.qty - ((already || {})[it.name] || 0)
   })), [invoice.items, already]);
@@ -39,7 +42,16 @@ export default function RefundModal({ invoice, onClose, onDone }) {
   };
 
   const chosen = lines.filter((l) => (qty[l.name] || 0) > 0);
-  const amount = chosen.reduce((t, l) => t + l.price * qty[l.name], 0);
+
+  // Worked out exactly the way the server does it, so what the counter reads out to
+  // the customer is what actually happens. Line prices are pre-discount and
+  // pre-VAT while the customer paid the total, so the value is scaled by the same
+  // ratio; then this bill's own قرض is cancelled before any cash is handed over.
+  const gross = chosen.reduce((t, l) => t + l.price * qty[l.name], 0);
+  const amount = invoice.sub > 0 ? gross * (invoice.total / invoice.sub) : gross;
+  const offCredit = Math.min(amount, invoiceOwed(invoice));
+  const cashBack = amount - offCredit;
+  const noGoods = already !== null && lines.length === 0;
   const nothingLeft = already !== null && lines.every((l) => l.left <= 0);
 
   async function submit() {
@@ -71,7 +83,11 @@ export default function RefundModal({ invoice, onClose, onDone }) {
         {already === null ? (
           <Loader label="Checking what is still returnable…" pad={24} />
         ) : nothingLeft ? (
-          <div className="banner banner-error">Everything on this invoice has already been returned.</div>
+          <div className="banner banner-error">
+            {noGoods
+              ? 'There is nothing to take back on this bill — it is a service fee, not goods.'
+              : 'Everything on this invoice has already been returned.'}
+          </div>
         ) : (
           <>
             <div style={{ maxHeight: '38vh', overflowY: 'auto' }}>
@@ -121,8 +137,18 @@ export default function RefundModal({ invoice, onClose, onDone }) {
                   <div className="row-between" style={{ fontSize: 13, fontWeight: 600 }}>
                     <div>Value coming back</div><div className="tnum">{fmt(amount)}</div>
                   </div>
+                  {offCredit > 0 && (
+                    <div className="row-between" style={{ fontSize: 12, color: 'var(--amber)', marginTop: 4 }}>
+                      <div>Taken off the قرض on {invoice.no}</div><div className="tnum">{fmt(offCredit)}</div>
+                    </div>
+                  )}
+                  <div className="row-between" style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>
+                    <div>Cash out of the till</div><div className="tnum">{fmt(cashBack)}</div>
+                  </div>
                   <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
-                    Taken off the customer&apos;s قرض first; anything left over is paid out of the till.
+                    {offCredit > 0
+                      ? 'What this bill still owes is cancelled first; the rest is handed back over the counter.'
+                      : 'This bill is paid up, so the whole value is handed back over the counter.'}
                   </div>
                 </div>
               )}

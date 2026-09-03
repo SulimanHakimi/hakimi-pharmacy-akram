@@ -8,10 +8,10 @@ import { LABELS, DEFAULT_PHARMACY } from './labels';
 const AppContext = createContext(null);
 
 // Order also decides which page a role lands on after signing in.
-export const SCREEN_ORDER = ['dash', 'pos', 'inv', 'sup', 'pur', 'sales', 'rx', 'cust', 'loans', 'fin', 'exp', 'ana', 'users', 'set'];
+export const SCREEN_ORDER = ['dash', 'pos', 'inv', 'sup', 'pur', 'sales', 'rx', 'proc', 'cust', 'loans', 'fin', 'exp', 'ana', 'users', 'set'];
 export const SCREEN_PATH = {
   dash: '/dashboard', pos: '/pos', inv: '/inventory', sup: '/suppliers', pur: '/purchases',
-  sales: '/invoices', rx: '/prescriptions', cust: '/customers', loans: '/loans',
+  sales: '/invoices', rx: '/prescriptions', proc: '/procedures', cust: '/customers', loans: '/loans',
   fin: '/finance', exp: '/expenses', ana: '/analytics', users: '/users', set: '/settings'
 };
 

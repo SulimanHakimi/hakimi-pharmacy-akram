@@ -1,7 +1,7 @@
 import { route, ok } from '@/lib/route';
 import { Drug, Transaction, getSettings } from '@/lib/models';
 import { periodData, breakdown, monthsTo } from '@/lib/analytics';
-import { STOCK_CATEGORY, REFUND_CATEGORY } from '@/lib/labels';
+import { STOCK_CATEGORY, REFUND_CATEGORY, CAPITAL_CATEGORY } from '@/lib/labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,16 +34,25 @@ export const GET = route(async (request) => {
     // Operating expenses are the real recorded expenses in the window, minus the
     // stock purchases already counted inside cost of goods sold. Entries written
     // before categories existed are recognised by their description instead.
-    const expenses = await Transaction.find({ type: 'Expense', t: { $gte: pd.window.curFrom, $lt: pd.window.curTo } });
+    const [expenses, capitalTx] = await Promise.all([
+      Transaction.find({ type: 'Expense', t: { $gte: pd.window.curFrom, $lt: pd.window.curTo } }),
+      // Owner cash put into the till in the window. Booked as income, shown on its
+      // own line so it is never mistaken for money the pharmacy earned trading.
+      Transaction.find({ type: 'Income', category: CAPITAL_CATEGORY, t: { $gte: pd.window.curFrom, $lt: pd.window.curTo } })
+    ]);
     // Refunds are already netted out of revenue by `totals`, so counting them
     // here as well would subtract the same money twice.
     const skip = (e) => e.category === STOCK_CATEGORY || e.category === REFUND_CATEGORY
       || (!e.category && /^(PO-|Supplier payment)/.test(e.desc || ''));
     const opEx = expenses.filter((e) => !skip(e)).reduce((t, e) => t + e.amount, 0);
+    const capital = capitalTx.reduce((t, e) => t + e.amount, 0);
     return ok({
       type, title: 'Profit & Loss Report', range: pd.range,
       revenue: pd.cur.rev, cogs: pd.cur.rev - pd.cur.profit, grossProfit: pd.cur.profit,
-      opEx, netProfit: pd.cur.profit - opEx
+      // Part of cost of goods sold, not a deduction on top of it: medicine that came
+      // back too damaged or expired to resell, at what the pharmacy paid for it.
+      writtenOff: pd.cur.writtenOff,
+      opEx, capital, netProfit: pd.cur.profit - opEx + capital
     });
   }
 

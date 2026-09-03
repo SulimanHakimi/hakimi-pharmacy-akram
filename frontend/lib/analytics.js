@@ -28,11 +28,21 @@ export function totals(invoices, returns = []) {
 
   for (const r of returns) {
     t.rev -= r.amount;
-    // Mirrors the invoice line above: gross margin on the goods, less the slice of
-    // the original discount that came back with them.
-    t.profit -= r.items.reduce((s, it) => s + (it.price - it.buy) * it.qty, 0) - (r.discShare || 0);
+    // Goods back on the shelf undo the sale outright, so only the margin comes off:
+    // the buy price is still sitting in stock. Expired, opened or damaged medicine
+    // does not go back, so the pharmacy paid for it and has nothing to show — the
+    // whole sale value comes off, which leaves the buy price where it belongs, in
+    // cost of goods sold. Either way, less the slice of the original discount that
+    // came back with the goods.
+    t.profit -= r.items.reduce((s, it) => s + (r.restocked === false ? it.price : it.price - it.buy) * it.qty, 0)
+      - (r.discShare || 0);
     t.returned = (t.returned || 0) + r.amount;
+    // What the pharmacy wrote off rather than resold, for the screens that show it.
+    if (r.restocked === false) {
+      t.writtenOff = (t.writtenOff || 0) + r.items.reduce((s, it) => s + it.buy * it.qty, 0);
+    }
   }
+  t.writtenOff = t.writtenOff || 0;
   t.returned = t.returned || 0;
   return t;
 }
@@ -87,7 +97,10 @@ export async function breakdown(invoices, returns = []) {
     const c = categoryOf[it.name] || 'Uncategorised';
     cats[c] = (cats[c] || 0) + sign * it.price * it.qty;
   };
-  for (const inv of invoices) for (const it of inv.items) add(it, 1);
+  // A procedure fee shares the invoice with the drugs used, but it is not something
+  // off the shelf — it has no category and would sit in the drug rankings as a
+  // phantom best-seller. Revenue and profit still count it; only these lists skip it.
+  for (const inv of invoices) for (const it of inv.items) if (!it.service) add(it, 1);
   for (const ret of returns) for (const it of ret.items) add(it, -1);
 
   for (const c of Object.keys(cats)) if (cats[c] <= 0) delete cats[c];

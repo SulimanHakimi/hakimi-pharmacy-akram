@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { PROCEDURE_TYPES } from '../labels.js';
 
 // Hot reload and warm serverless containers re-run this module, so every model is
 // registered through mongoose.models first to avoid OverwriteModelError.
@@ -30,6 +31,7 @@ const userSchema = new mongoose.Schema({
     pur: { type: Boolean, default: false },
     sales: { type: Boolean, default: false },
     rx: { type: Boolean, default: false },
+    proc: { type: Boolean, default: false },
     cust: { type: Boolean, default: false },
     fin: { type: Boolean, default: false },
     ana: { type: Boolean, default: false },
@@ -75,7 +77,10 @@ const invoiceSchema = new mongoose.Schema({
     name: String,
     qty: Number,
     price: Number,                                   // sell price at time of sale
-    buy: Number                                      // buy price at time of sale
+    buy: Number,                                     // buy price at time of sale
+    // A procedure fee rather than something off the shelf: no stock moves for it
+    // and the best-seller lists leave it out, but it is revenue like any other line.
+    service: { type: Boolean, default: false }
   }],
   sub: Number,
   disc: { type: Number, default: 0 },
@@ -86,9 +91,10 @@ const invoiceSchema = new mongoose.Schema({
   payment: { type: String, enum: ['Cash', 'Credit', 'Partial'], default: 'Cash' },
   paid: { type: Number, default: 0 },                // taken at the counter
   due: { type: Number, default: 0 },                 // added to the customer's قرض
-  // How much of `due` has since been collected against this particular sale.
-  // `paid` and `due` are left at what they were on the day, so the invoice still
-  // prints the truth; a loan is cleared when settled reaches due.
+  // How much of `due` the customer no longer owes: money collected against this
+  // particular sale, plus any debt cancelled by taking goods back off it. `paid`
+  // and `due` are left at what they were on the day, so the invoice still prints
+  // the truth; a loan is cleared when settled reaches due.
   settled: { type: Number, default: 0 },
   servedBy: String
 }, { timestamps: true });
@@ -121,6 +127,31 @@ const returnSchema = new mongoose.Schema({
   // still returned; only the stock movement is skipped.
   restocked: { type: Boolean, default: true },
   reason: String,
+  servedBy: String
+}, { timestamps: true });
+
+/**
+ * A ختنه or تطبیق carried out at the pharmacy. The money comes in two
+ * parts: a fee for the work, and the drugs used up doing it. The drugs are sold
+ * rather than given away, so every procedure writes a normal invoice — stock comes
+ * off the shelf, the takings reach the cash book, and the reports count it like any
+ * other sale. This record is the register the staff read, and it deliberately
+ * carries no balance of its own: what the patient has paid and still owes lives on
+ * the invoice, where the قرض screens already know how to collect it.
+ */
+const procedureSchema = new mongoose.Schema({
+  pn: { type: String, required: true, unique: true },
+  type: { type: String, enum: PROCEDURE_TYPES, required: true },
+  patient: { type: String, required: true },
+  phone: String,
+  date: { type: Date, default: Date.now },
+  fee: { type: Number, default: 0 },                 // charged for the work itself
+  drugTotal: { type: Number, default: 0 },           // drugs used, at sell price
+  total: { type: Number, default: 0 },               // fee + drugs, plus VAT
+  // The sale the fee and the drugs were written to.
+  invoiceNo: { type: String, required: true },
+  invoice: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice', required: true },
+  notes: String,
   servedBy: String
 }, { timestamps: true });
 
@@ -164,7 +195,7 @@ const activityLogSchema = new mongoose.Schema({
 });
 
 const counterSchema = new mongoose.Schema({
-  key: { type: String, unique: true },               // 'invoice' | 'po' | 'rx' | 'return'
+  key: { type: String, unique: true },               // 'invoice' | 'po' | 'rx' | 'return' | 'procedure'
   seq: { type: Number, default: 0 }
 });
 
@@ -189,6 +220,7 @@ export const Invoice = model('Invoice', invoiceSchema);
 export const Return = model('Return', returnSchema);
 export const Purchase = model('Purchase', purchaseSchema);
 export const Prescription = model('Prescription', prescriptionSchema);
+export const Procedure = model('Procedure', procedureSchema);
 export const Transaction = model('Transaction', transactionSchema);
 export const ActivityLog = model('ActivityLog', activityLogSchema);
 export const Counter = model('Counter', counterSchema);
